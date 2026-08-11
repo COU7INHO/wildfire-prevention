@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/icon.png" alt="" width="128" height="128">
+  <img src="assets/icon.png" alt="" width="160" height="160">
 </p>
 
 <h1 align="center">wildfire-prevention</h1>
