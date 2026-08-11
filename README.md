@@ -1,197 +1,214 @@
-# wildfire-prevention — priorização da prevenção de incêndios
+<p align="center">
+  <img src="assets/icon.png" alt="" width="128" height="128">
+</p>
 
-Ferramenta de apoio à decisão para municípios: **onde a gestão de combustível
-protege mais**, com dados abertos e oficiais, atualizados automaticamente.
+<h1 align="center">wildfire-prevention</h1>
 
-Piloto: **Baião** (tipologia T4 do ICNF — o pior escalão: muitas ocorrências e
-muita área ardida).
-
-Não é um simulador de propagação nem substitui o PMDFCI. É a camada de decisão
-por cima: risco × exposição × dificuldade de combate, ordenada e explicada.
+<p align="center">
+  Where fuel management protects the most, from open and official data, updated automatically.
+</p>
 
 ---
 
-## Arrancar
+A decision-support tool for municipalities. It is not a fire-spread simulator,
+and it does not replace the statutory municipal fire defence plan (PMDFCI). It
+is the decision layer on top of it: susceptibility × exposure × suppression
+difficulty, ranked and explained in plain language.
+
+**Pilot municipality: Baião**, classified T4 by the ICNF — the worst tier, with
+both a high number of ignitions and a large burned area.
+
+The interface is in Portuguese, because its users are Portuguese municipal
+technicians. Everything else is in English.
+
+---
+
+## Getting started
 
 ```bash
-make setup     # uma vez: uv sync, npm install, libomp
+make setup     # once: uv sync, npm install, libomp
 make app       # http://localhost:5175
-make estado    # o que está construído e quão recente é
+make estado    # what is built, and how recent it is
 ```
 
-Reconstruir tudo do zero (horas — descarrega ~10 GB de satélite):
+Rebuilding everything from scratch takes hours and downloads ~10 GB of satellite
+imagery:
 
 ```bash
 make dados
 ```
 
-`make help` lista tudo.
+`make help` lists every target. Dependencies are managed with
+[uv](https://docs.astral.sh/uv/), not pip.
 
 ---
 
-## O que a aplicação mostra
+## What the application shows
 
-| Vista | Responde a | Atualiza |
+| View | Answers | Refresh |
 |---|---|---|
-| **Onde atuar** | onde a prevenção protege mais (risco × exposição × dificuldade) | anual |
-| **Onde arde** | propensão estrutural, com as áreas ardidas reais sobreponíveis por ano | anual |
-| **Vegetação** | tipo de ocupação, com espécie (eucalipto / pinheiro / folhosas) | ~5 anos |
-| **Secura** | estado atual da vegetação e **anomalia** face ao mesmo mês em 2015-2025 | semanal |
-| **Plano 2021** | comparação lado a lado com a cartografia oficial do PMDFCI | — |
+| **Where to act** | where prevention protects the most (susceptibility × exposure × difficulty) | yearly |
+| **Where it burns** | structural propensity, with real burned areas overlaid by year | yearly |
+| **Vegetation** | land cover, including species (eucalyptus / pine / broadleaf) | ~5 years |
+| **Dryness** | current vegetation state and the **anomaly** against the same month across 2015-2025 | weekly |
+| **2021 Plan** | side-by-side comparison with the official PMDFCI hazard map | — |
 
-Camadas de contexto em qualquer vista: casas, estradas, pontos de água oficiais,
-ignições do ano em curso.
+Context layers available in every view: buildings, roads, official water points,
+and the current year's ignitions.
 
 ---
 
-## Fontes de dados
+## Data sources
 
-| Dado | Fonte | Idade típica |
+| Data | Source | Typical age |
 |---|---|---|
-| Áreas ardidas | ICNF (ArcGIS REST, uma camada por ano) | 2009-2025 |
-| Ignições do ano | Proteção Civil via `api.fogos.pt` | tempo quase real |
-| Terreno (declive, exposição) | AWS Terrain Tiles ~29 m | estável |
-| Ocupação do solo | COS 2015 / 2018 / 2023 (DGT) | plurianual |
-| Vegetação (NDVI/NDMI) | Sentinel-2 L2A via Copernicus (CDSE) | ~5 dias |
-| Edifícios | Microsoft Global ML Building Footprints | 18 914 em Baião |
-| Pontos de água | **PMDFCI do próprio município** (RPA, 2G+3G) | 120 pontos |
-| Bombeiros, estradas | OpenStreetMap | contínua |
-| Perigosidade oficial | **PMDFCI 2021-2030**, raster 10 m | fixa até 2030 |
+| Burned areas | ICNF (ArcGIS REST, one layer per year) | 2009-2025 |
+| Current-year ignitions | Civil Protection via `api.fogos.pt` | near real time |
+| Terrain (slope, aspect) | AWS Terrain Tiles, ~29 m | stable |
+| Land cover | COS 2015 / 2018 / 2023 (DGT) | multi-year |
+| Vegetation (NDVI/NDMI) | Sentinel-2 L2A via Copernicus (CDSE) | ~5 days |
+| Buildings | Microsoft Global ML Building Footprints | 18,914 in Baião |
+| Water points | **the municipality's own PMDFCI** (RPA, 2G+3G) | 120 points |
+| Fire stations, roads | OpenStreetMap | continuous |
+| Official hazard map | **PMDFCI 2021-2030**, 10 m raster | fixed until 2030 |
 
-O acesso ao Sentinel exige credenciais Copernicus em `.env`
-(`CDSE_USERNAME` / `CDSE_PASSWORD`) — ficheiro ignorado pelo git.
+Sentinel access needs Copernicus credentials in `.env`
+(`CDSE_USERNAME` / `CDSE_PASSWORD`). See `.env.example`; the real file is
+git-ignored. Every other step runs without them.
 
 ---
 
-## O modelo
+## The model
 
-**LightGBM** sobre um painel de 2,1 M linhas (210 998 células × 10 anos). Cada
-linha usa vegetação, combustível e histórico **anteriores** ao ano que prevê.
+**LightGBM** over a panel of 2.1 M rows (210,998 cells × 10 years). Each row uses
+vegetation, fuel and fire history from **before** the year it predicts, so no
+label information can leak backwards into the features.
 
-Hiperparâmetros afinados com validação separada do teste
-(treino ≤2019 · validação 2020-2021 · teste 2022-2025, tocado uma só vez).
-A regularização forte (`min_child_samples=2000`) é essencial: sem ela o modelo
-decora células em vez de aprender padrões.
+Hyperparameters were tuned on a validation split held apart from the test set
+(training ≤2019 · validation 2020-2021 · test 2022-2025, touched exactly once).
+Strong regularisation (`min_child_samples=2000`) turned out to be essential:
+without it the model memorises individual cells instead of learning patterns.
 
-### Validação honesta
+### Honest validation
 
-| Teste | AUC |
+| Test | AUC |
 |---|---|
-| Anos nunca vistos (2023 / 2024 / 2025) | **0,804** |
-| Anos **e terreno** nunca vistos (metade do concelho) | **0,763** |
-| Confronto justo com a cartografia oficial (2022-2025) | 0,681 vs 0,700 |
+| Unseen years (2023 / 2024 / 2025) | **0.804** |
+| Unseen years **and unseen terrain** (half the municipality) | **0.763** |
+| Fair comparison against the official hazard map (2022-2025) | 0.681 vs 0.700 |
 
-**A diferença para a cartografia oficial NÃO é estatisticamente significativa**
-(IC 95% [−0,020, +0,069], bootstrap por blocos espaciais). Os dois são
-equivalentes dentro da margem de erro.
+**The gap against the official map is not statistically significant**
+(95% CI [−0.020, +0.069], spatial block bootstrap). Within the margin of error,
+the two are equivalent.
 
-O diferenciador não é a precisão — é que a cartografia oficial está **fixa até
-2030** e este modelo **re-treina**.
+Accuracy is therefore not the differentiator. The difference that matters is that
+the official map is **frozen until 2030**, while this model **retrains**.
 
-### O modelo é um artefacto identificável
+### The model is an identifiable artifact
 
-`make retreinar` guarda o modelo em `data/out/modelo_<municipio>.txt` e regista
-em `.json` **quando foi treinado, com que anos, quantas linhas e que variáveis**.
-A atualização semanal pontua com esse modelo guardado, em vez de treinar um novo
-de cada vez.
+`make retreinar` saves the model to `data/out/modelo_<municipality>.txt` and
+records, in a companion `.json`, **when it was trained, over which years, on how
+many rows, and with which variables**. The weekly update scores with that saved
+model rather than training a fresh one each time.
 
-Isto existe por uma razão concreta: um mapa publicado serve de base a decisões
-de despesa pública. Tem de ser possível responder, meses depois, *qual* modelo
-produziu o mapa em que se decidiu. `make estado` mostra sempre qual está em uso.
-
----
-
-## Atualização automática
-
-```bash
-make atualizar    # ignições + áreas ardidas + secura + exportar  (~3 min)
-make cron         # instruções para agendar semanalmente
-make retreinar    # re-treinar o modelo (após cada época de fogos)
-```
-
-Cada passo tolera falhas: uma fonte em baixo não impede as restantes, e a
-aplicação continua a servir os últimos dados bons.
+This exists for a concrete reason: a published map informs decisions about public
+spending. Months later, it must still be possible to answer *which* model
+produced the map a decision was based on. `make estado` always reports the one in
+use.
 
 ---
 
-## Colocar online
+## Automatic updates
 
 ```bash
-make build     # interface de produção -> webapp/dist/
-make nginx     # imprime a configuração do servidor
-make cron      # imprime a linha do crontab
+make atualizar    # ignitions + burned areas + dryness + export  (~3 min)
+make cron         # prints the crontab line for a weekly schedule
+make retreinar    # retrain the model (after each fire season)
 ```
 
-**Atenção a isto**, é o erro fácil de cometer: o `dist/` só recebe os dados no
-momento do build. Se o nginx servir os dados de dentro do `dist/`, o cron
-atualiza os ficheiros e **o site continua a mostrar os antigos, sem avisar**.
+Every step tolerates failure: one source being down does not stop the others, and
+the application keeps serving the last good data.
 
-Por isso o `/data/` é servido diretamente de `webapp/public/data/`, que é onde o
-cron escreve. Assim os dados atualizam sem reconstruir a interface, e a
-interface reconstrói sem tocar nos dados.
+---
 
-O servidor precisa de:
+## Deployment
+
+```bash
+make build     # production interface -> webapp/dist/
+make nginx     # prints the server configuration
+make cron      # prints the crontab line
+```
+
+**Watch out for this one**, it is the easy mistake to make: `dist/` only receives
+the data at build time. If nginx serves data from inside `dist/`, the cron job
+will update the files and **the site will keep showing the old ones, silently**.
+
+That is why `/data/` is served directly from `webapp/public/data/`, which is where
+the cron job writes. Data then updates without rebuilding the interface, and the
+interface rebuilds without touching the data.
+
+The server needs:
 
 | | |
 |---|---|
-| `.env` | credenciais Copernicus |
-| `uv` | no `PATH` do cron (a linha impressa já o define) |
-| `data/out` + partes de `data/cache` | ~200 MB — **não** são precisos os 14 GB de bandas de satélite |
+| `.env` | Copernicus credentials |
+| `uv` | on the cron `PATH` (the printed line sets it) |
+| `data/out` + part of `data/cache` | ~200 MB — the 14 GB of satellite bands are **not** required |
 
-As bandas só são necessárias para reconstruir composições antigas; o cron
-descarrega o que precisar do mês em curso.
-
----
-
-## Limitações conhecidas
-
-- **Um só município.** O código tem Baião fixo em vários sítios (tile Sentinel
-  `T29TNF`, código DICO `1302`, tile GHSL). `make dados MUN=X` não funciona
-  ainda para outro concelho.
-- **Viés de supressão.** Os dados mostram onde ardeu, não onde os bombeiros
-  travaram o fogo. Nenhum modelo de incêndios escapa a isto.
-- **Sem meteorologia.** Não prevemos um dia concreto — só propensão estrutural.
-  Foi por isto que a vista de "prontidão sazonal" foi removida: sem vento,
-  temperatura e FWI, o sinal não era fiável.
-- **A secura é descritiva, não preditiva.** Diz o que o satélite mediu, não o
-  que vai arder.
-- **Resolução ~29 m.** Faixas de gestão de combustível (mediana 0,09 ha) são
-  demasiado estreitas para monitorizar por satélite.
-- **Ocupação do solo de 2023**, anterior ao grande incêndio de 2024.
+The raw bands are only needed to rebuild historical composites; the cron job
+downloads whatever it needs for the current month.
 
 ---
 
-## Estrutura
+## Known limitations
+
+- **One municipality only.** Baião is hardcoded in several places (Sentinel tile
+  `T29TNF`, DICO code `1302`, GHSL tile). `make dados MUN=X` does not yet work
+  for another municipality.
+- **Suppression bias.** The data shows where fire burned, not where firefighters
+  stopped it. No wildfire model escapes this.
+- **No weather.** This does not forecast a specific day, only structural
+  propensity. That is why a "seasonal readiness" view was built and then removed:
+  without wind, temperature and FWI the signal was not trustworthy.
+- **Dryness is descriptive, not predictive.** It reports what the satellite
+  measured, not what is going to burn.
+- **~29 m resolution.** Legal fuel-management strips (median 0.09 ha) are too
+  narrow to monitor from this imagery.
+- **Land cover is from 2023**, predating the large 2024 fire.
+
+---
+
+## Layout
 
 ```
 wildfire_prevention/
-  boundary.py        fronteira do município (OSM)
-  features.py        grelha de células: terreno + COS + histórico ICNF
-  access.py          casas, estradas, água, bombeiros → colunas da grelha
-  veg_panel.py       painel de vegetação por ano (Sentinel)
-  monthly_archive.py composições mensais 2015-2025 (base da anomalia)
-  seca_history.py    meses recentes de secura (janela deslizante)
-  anomalia.py        secura face ao mesmo mês em anos anteriores
-  panel_model.py     modelo, hiperparâmetros afinados, suscetibilidade
-  tune.py            busca de hiperparâmetros com validação separada
-  priority.py        prioridade = risco × exposição × dificuldade
-  plano_oficial.py   perigosidade do PMDFCI + confronto com incerteza
-  export_web.py      GeoJSON que a aplicação lê
-  atualizar.py       o que o cron corre
+  boundary.py        municipal boundary (OSM)
+  features.py        cell grid: terrain + land cover + ICNF fire history
+  access.py          buildings, roads, water, fire stations -> grid columns
+  veg_panel.py       per-year vegetation panel (Sentinel)
+  monthly_archive.py monthly composites 2015-2025 (basis for the anomaly)
+  seca_history.py    recent dryness months (sliding window)
+  anomalia.py        dryness against the same month in previous years
+  panel_model.py     model, tuned hyperparameters, susceptibility
+  tune.py            hyperparameter search with a separate validation split
+  priority.py        priority = susceptibility x exposure x difficulty
+  plano_oficial.py   PMDFCI hazard raster + comparison with uncertainty
+  export_web.py      the GeoJSON the application reads
+  atualizar.py       what the cron job runs
   estado.py          make estado
-webapp/              React + MapLibre (interface em português)
-data/cache/          descarregado (~10 GB, fora do git)
-data/out/            produtos intermédios
+webapp/              React + MapLibre (user interface in Portuguese)
+data/cache/          downloaded, ~10 GB, outside git
+data/out/            intermediate products
 ```
 
 ---
 
-## Princípio de trabalho
+## Working principle
 
-Medir antes de afirmar. Ao longo do desenvolvimento, várias conclusões
-aparentemente boas caíram quando testadas — e ficaram registadas aqui em vez de
-serem escondidas: a comparação enviesada com o plano, o modelo de "prontidão"
-que respondia bem à pergunta errada, a valoração económica com 43% de lacunas.
+Measure before asserting. Several promising conclusions collapsed once they were
+tested, and they are recorded here rather than hidden: a biased comparison
+against the official plan, a "readiness" model that answered the wrong question
+well, an economic valuation with 43% of the polygons unvalued.
 
-Se um número neste README parecer bom demais, o teste que o produziu está no
-código.
+If a number in this README looks too good, the test that produced it is in the
+code.
