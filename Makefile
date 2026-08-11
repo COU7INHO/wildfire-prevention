@@ -1,4 +1,4 @@
-# plano-v2 — priorização da prevenção de incêndios (piloto: Baião)
+# wildfire-prevention — priorização da prevenção de incêndios (piloto: Baião)
 #
 # Uso diário:
 #   make app          arranca a aplicação
@@ -15,7 +15,7 @@ PY  := uv run python
         atualizar retreinar cron nginx estado limpar
 
 help:
-	@echo "plano-v2 — priorização da prevenção de incêndios ($(MUN))"
+	@echo "wildfire-prevention — priorização da prevenção de incêndios ($(MUN))"
 	@echo ""
 	@echo "  ARRANCAR"
 	@echo "    make setup        instala tudo (uv sync, npm, libomp)"
@@ -62,58 +62,58 @@ setup:
 dados: grelha acessos tempos sentinel arquivo secura exportar
 
 grelha:
-	$(PY) -m plano_v2.features $(MUN)
+	$(PY) -m wildfire_prevention.features $(MUN)
 
 acessos:
-	$(PY) -m plano_v2.access $(MUN)
+	$(PY) -m wildfire_prevention.access $(MUN)
 
 # tempo de viagem dos bombeiros por rota real (OSRM), não por linha reta
 tempos:
-	$(PY) -m plano_v2.tempo_resposta $(MUN)
+	$(PY) -m wildfire_prevention.tempo_resposta $(MUN)
 
 sentinel:
-	$(PY) -m plano_v2.veg_panel $(MUN)
+	$(PY) -m wildfire_prevention.veg_panel $(MUN)
 
 arquivo:
-	$(PY) -m plano_v2.monthly_archive $(MUN)
+	$(PY) -m wildfire_prevention.monthly_archive $(MUN)
 
 # o Copernicus bloqueia a conta se abrirmos demasiadas sessões; esta variante
 # espera que desbloqueie e retoma sozinha (útil para o arquivo completo)
 arquivo-paciente:
-	$(PY) -m plano_v2.run_archive $(MUN)
+	$(PY) -m wildfire_prevention.run_archive $(MUN)
 
 secura:
-	$(PY) -m plano_v2.seca_history $(MUN)
+	$(PY) -m wildfire_prevention.seca_history $(MUN)
 
 # --------------------------------------------------------------------- modelo
 modelo:
-	$(PY) -m plano_v2.panel_model $(MUN)
+	$(PY) -m wildfire_prevention.panel_model $(MUN)
 
 afinar:
-	$(PY) -m plano_v2.tune $(MUN)
+	$(PY) -m wildfire_prevention.tune $(MUN)
 
 # PNG de diagnóstico: previsto vs. o que ardeu mesmo
 mapas:
-	$(PY) -m plano_v2.map_render $(MUN)
+	$(PY) -m wildfire_prevention.map_render $(MUN)
 
 comparar:
-	$(PY) -c "from plano_v2.plano_oficial import head_to_head; \
-	          from plano_v2.export_web import export_comparison; \
+	$(PY) -c "from wildfire_prevention.plano_oficial import head_to_head; \
+	          from wildfire_prevention.export_web import export_comparison; \
 	          import json; print(json.dumps(head_to_head('$(MUN)'), indent=2, ensure_ascii=False)); \
 	          export_comparison('$(MUN)')"
 
 # ------------------------------------------------------------------ produção
 exportar:
-	$(PY) -m plano_v2.export_web $(MUN)
+	$(PY) -m wildfire_prevention.export_web $(MUN)
 
 atualizar:
-	$(PY) -m plano_v2.atualizar $(MUN)
+	$(PY) -m wildfire_prevention.atualizar $(MUN)
 
 # re-treina e GUARDA o modelo, depois reavalia e exporta. O modelo guardado é
 # o que a atualização semanal usa — assim o mapa publicado tem sempre um
 # modelo identificável por trás, com data e parâmetros registados.
 retreinar:
-	$(PY) -c "from plano_v2.panel_model import train; train('$(MUN)')"
+	$(PY) -c "from wildfire_prevention.panel_model import train; train('$(MUN)')"
 	$(MAKE) modelo comparar exportar
 
 app:
@@ -170,7 +170,7 @@ nginx:
 	@echo "  make build   antes do primeiro arranque e sempre que a interface mudar"
 
 estado:
-	@$(PY) -m plano_v2.estado $(MUN)
+	@$(PY) -m wildfire_prevention.estado $(MUN)
 
 limpar:
 	@echo "isto apaga só os produtos, nunca a cache de downloads"

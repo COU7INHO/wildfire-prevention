@@ -14,7 +14,7 @@ from shapely.geometry import shape
 from shapely.geometry.base import BaseGeometry
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
-USER_AGENT = "fire-plano-v2-audit/0.1 (tiagomccoutinho@gmail.com)"
+USER_AGENT = "wildfire-prevention/0.1 (tiagomccoutinho@gmail.com)"
 CACHE_DIR = Path(__file__).resolve().parent.parent / "data" / "cache"
 
 

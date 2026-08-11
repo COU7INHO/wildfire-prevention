@@ -61,7 +61,7 @@ def _fetch_buildings(name: str, bbox) -> list[tuple[float, float]]:
     );
     out center;
     """
-    headers = {"User-Agent": "fire-plano-v2-audit/0.1 (tiagomccoutinho@gmail.com)"}
+    headers = {"User-Agent": "wildfire-prevention/0.1 (tiagomccoutinho@gmail.com)"}
     resp = requests.post(OVERPASS_URL, data={"data": query}, headers=headers, timeout=180)
     if resp.status_code in (406, 429, 504):
         # main instance refused/overloaded -> try the mirror

@@ -32,7 +32,7 @@ import requests
 
 CACHE_DIR = Path(__file__).resolve().parent.parent / "data" / "cache"
 OUT_DIR = Path(__file__).resolve().parent.parent / "data" / "out"
-UA = {"User-Agent": "fire-plano-v2-audit/0.1 (tiagomccoutinho@gmail.com)"}
+UA = {"User-Agent": "wildfire-prevention/0.1 (tiagomccoutinho@gmail.com)"}
 
 ROAD_RE = "^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|service|track)$"
 

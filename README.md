@@ -1,4 +1,4 @@
-# plano-v2 — priorização da prevenção de incêndios
+# wildfire-prevention — priorização da prevenção de incêndios
 
 Ferramenta de apoio à decisão para municípios: **onde a gestão de combustível
 protege mais**, com dados abertos e oficiais, atualizados automaticamente.
@@ -164,7 +164,7 @@ descarrega o que precisar do mês em curso.
 ## Estrutura
 
 ```
-plano_v2/
+wildfire_prevention/
   boundary.py        fronteira do município (OSM)
   features.py        grelha de células: terreno + COS + histórico ICNF
   access.py          casas, estradas, água, bombeiros → colunas da grelha
