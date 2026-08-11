@@ -1,0 +1,50 @@
+{
+  "plan_year": 2021,
+  "anos": [
+    {
+      "ano": 2022,
+      "ardeu_pct": 9.7,
+      "plano": 0.569,
+      "nosso": 0.542
+    },
+    {
+      "ano": 2023,
+      "ardeu_pct": 3.5,
+      "plano": 0.857,
+      "nosso": 0.816
+    },
+    {
+      "ano": 2024,
+      "ardeu_pct": 36.5,
+      "plano": 0.714,
+      "nosso": 0.733
+    },
+    {
+      "ano": 2025,
+      "ardeu_pct": 1.3,
+      "plano": 0.661,
+      "nosso": 0.631
+    }
+  ],
+  "media": {
+    "plano": 0.7,
+    "nosso": 0.681
+  },
+  "global": {
+    "plano": 0.76,
+    "nosso": 0.771
+  },
+  "vitorias": {
+    "nosso": 1,
+    "plano": 3
+  },
+  "incerteza": {
+    "dif_media": 0.025,
+    "ic95": [
+      -0.02,
+      0.069
+    ],
+    "significativo": false,
+    "prob_plano_melhor": 86
+  }
+}

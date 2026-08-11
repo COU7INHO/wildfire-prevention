@@ -1,0 +1,35 @@
+{
+  "municipio": "Baião",
+  "treinado_em": "2026-08-11T13:01:46",
+  "anos_alvo": [
+    2016,
+    2025
+  ],
+  "n_linhas": 2109980,
+  "n_celulas": 210998,
+  "features": [
+    "elevation",
+    "slope",
+    "northness",
+    "eastness",
+    "built_m2",
+    "dist_building_m",
+    "houses_250m",
+    "dist_road_m",
+    "fuel_code",
+    "ndvi",
+    "ndmi",
+    "n_burns_hist",
+    "years_since_burn"
+  ],
+  "parametros": {
+    "num_leaves": 15,
+    "min_child_samples": 2000,
+    "learning_rate": 0.03,
+    "n_estimators": 300,
+    "reg_lambda": 0.0,
+    "colsample_bytree": 0.6,
+    "subsample": 0.8,
+    "random_state": 42
+  }
+}

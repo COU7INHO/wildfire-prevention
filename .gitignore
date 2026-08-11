@@ -1,0 +1,26 @@
+# Credentials. Copernicus login lives here; never commit it.
+.env
+
+# Environments and dependencies, rebuilt with `make setup`
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+webapp/dist/
+
+# Downloaded source data: ~14 GB of Sentinel scenes and elevation tiles.
+# Re-downloadable, and far too large for a repository.
+data/cache/
+
+# Intermediate products of the pipeline (~109 MB): feature grids, monthly
+# composites, diagnostic PNGs. Rebuilt with `make dados`.
+# (must be `data/out/*`, not `data/out/`: git ignores an excluded directory
+# outright and never looks inside it, so the exceptions below would not apply)
+data/out/*
+# ...except the trained model, which is small and IS the published product.
+# Keeping it versioned means every map can be traced to an identifiable model.
+!data/out/modelo_*.txt
+!data/out/modelo_*.json
+
+data/cron.log
+.DS_Store
