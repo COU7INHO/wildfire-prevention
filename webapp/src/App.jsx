@@ -251,6 +251,7 @@ export default function App() {
   const [fontes, setFontes] = useState([]);
   const [modelo, setModelo] = useState(null);
   const [verMetodologia, setVerMetodologia] = useState(false);
+  const [painel, setPainel] = useState(false); // control sheet, phones only
 
   useEffect(() => {
     const map = new maplibregl.Map({
@@ -417,6 +418,7 @@ export default function App() {
   // detail from one map is never carried over into another one.
   useEffect(() => {
     setSelected(null);
+    setPainel(false); // on a phone, picking a view means you want to see the map
     mapRef.current?.jumpTo(VISTA_CONCELHO);
     map2Ref.current?.jumpTo(VISTA_CONCELHO);
   }, [view]);
@@ -441,8 +443,25 @@ export default function App() {
   }, [overlays, map2Ready]);
 
 
+  // Opening the menu closes the cell card: the card describes a point on the map,
+  // and leaving it behind the drawer would have it describe something you can no
+  // longer see.
+  const alternarPainel = () => {
+    setPainel((v) => !v);
+    setSelected(null);
+  };
+
   return (
-    <div className="app">
+    <div className={`app${painel ? " painel-aberto" : ""}${selected ? " detalhe-aberto" : ""}`}>
+      <button className="painel-btn" onClick={alternarPainel} aria-expanded={painel}
+              aria-label={painel ? "Fechar menu" : "Abrir menu"}>
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"
+             stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          {painel ? <path d="M4 4l12 12M16 4L4 16" /> : <path d="M3 5h14M3 10h14M3 15h14" />}
+        </svg>
+      </button>
+      {painel && <div className="painel-fundo" onClick={() => setPainel(false)} />}
+
       <aside className="sidebar">
         <div className="brand">
           <span className="brand-eyebrow">Município de Baião</span>
