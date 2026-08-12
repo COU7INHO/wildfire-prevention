@@ -49,7 +49,7 @@ _ROTULO_EXCLUIDA = {
 }
 
 
-def _modelo(name: str) -> dict | None:
+def _model_meta(name: str) -> dict | None:
     """How the model in production was actually built — read from the artefact
     itself, so this documentation cannot drift from what is running."""
     from . import panel_model
@@ -78,20 +78,20 @@ def _modelo(name: str) -> dict | None:
     }
 
 
-def _fontes(name: str, sentinel_date: str | None) -> list[dict]:
+def _sources(name: str, sentinel_date: str | None) -> list[dict]:
     """Provenance of every layer, built from the data actually on disk so the
     panel in the app cannot drift from what is really being used."""
     from . import icnf_labels
 
     slug = name.lower().replace("ã", "a")
-    anos = [y for _, y in icnf_labels.list_year_layers()]
-    occ_path = WEB_DIR / f"{slug}_ocorrencias.geojson"
+    years = [y for _, y in icnf_labels.list_year_layers()]
+    occ_path = WEB_DIR / f"{slug}_ignitions.geojson"
     occ = json.loads(occ_path.read_text()).get("properties", {}) if occ_path.exists() else {}
 
     return [
         {"o_que": "Áreas ardidas e histórico de fogo",
          "quem": "ICNF — Instituto da Conservação da Natureza e das Florestas",
-         "quando": f"{min(anos)}–{max(anos)}" if anos else "—"},
+         "quando": f"{min(years)}–{max(years)}" if years else "—"},
         {"o_que": "Ignições do ano em curso",
          "quem": "Proteção Civil (ANEPC), via fogos.pt",
          "quando": f"{occ.get('year', '')}, obtidas a {occ.get('fetched', '—')}"},
@@ -132,15 +132,15 @@ def export(name: str = "Baião") -> Path:
 
     # official PMDFCI 2021 hazard surface, for side-by-side comparison
     try:
-        from .plano_oficial import sample_cells
+        from .official_plan import sample_cells
 
         oficial_cell = sample_cells(name)
     except Exception:
         oficial_cell = None
 
     # monthly dryness history (map slider + trend chart), if built
-    hist_npz = priority.OUT_DIR / f"seca_history_{name.lower()}.npz"
-    hist_meta = priority.OUT_DIR / f"seca_history_{name.lower()}.json"
+    hist_npz = priority.OUT_DIR / f"dryness_history_{name.lower()}.npz"
+    hist_meta = priority.OUT_DIR / f"dryness_history_{name.lower()}.json"
     months, month_cells = [], []
     if hist_npz.exists() and hist_meta.exists():
         h = np.load(hist_npz)
@@ -156,7 +156,7 @@ def export(name: str = "Baião") -> Path:
             month_cells.append(np.nan_to_num(h[m["key"]], nan=0.3))
             # anomaly vs the same calendar month in past years
             try:
-                from .anomalia import baseline_for_month
+                from .anomaly import baseline_for_month
 
                 ym = m["key"].split("_")[1]
                 base, _yrs = baseline_for_month(name, int(ym[5:7]))
@@ -267,9 +267,9 @@ def export(name: str = "Baião") -> Path:
         "type": "FeatureCollection",
         "properties": {"municipality": name, "square_m": SQUARE_M, "sentinel_date": sentinel_date,
                        "dryness_index": dryness_index, "pct_dry": pct_dry,
-                       "seca_series": seca_series,
-                       "fontes": _fontes(name, sentinel_date),
-                       "modelo": _modelo(name)},
+                       "dryness_series": seca_series,
+                       "sources": _sources(name, sentinel_date),
+                       "model": _model_meta(name)},
         "features": features,
     }
     WEB_DIR.mkdir(parents=True, exist_ok=True)
@@ -302,7 +302,7 @@ def export_context(name: str = "Baião") -> None:
         {"type": "Feature", "geometry": {"type": "Point", "coordinates": [float(lo), float(la)]}, "properties": {}}
         for (lo, la), ok in zip(pts, inside) if ok
     ]
-    (WEB_DIR / f"{slug}_casas.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats}))
+    (WEB_DIR / f"{slug}_buildings.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats}))
     print(f"casas: {len(feats)} pontos")
 
     from shapely.geometry import LineString, Point as ShpPoint, Polygon as ShpPolygon, mapping
@@ -337,7 +337,7 @@ def export_context(name: str = "Baião") -> None:
         return out
 
     roads = _ways_to_features(json.loads((cache / f"roads_{name.lower()}.json").read_text()))
-    (WEB_DIR / f"{slug}_estradas.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": roads}))
+    (WEB_DIR / f"{slug}_roads.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": roads}))
     print(f"estradas: {len(roads)} vias")
 
     water = _ways_to_features(json.loads((cache / f"water_{name.lower()}.json").read_text()), closed_as_polygon=True)
@@ -355,19 +355,19 @@ def export_context(name: str = "Baião") -> None:
             "geometry": {"type": "Point", "coordinates": [p["lon"], p["lat"]]},
             "properties": {"nome": p["nome"], "volume_m3": p["volume_m3"], "oficial": True, "classe": p["classe"] or "T"},
         })
-    (WEB_DIR / f"{slug}_agua.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": water}, ensure_ascii=False))
+    (WEB_DIR / f"{slug}_water.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": water}, ensure_ascii=False))
     print(f"água: {len(water)} elementos (inclui RPA oficial)")
 
 
 def export_comparison(name: str = "Baião") -> None:
     """Copy the plan-vs-model head-to-head results for the app to display."""
-    src = priority.OUT_DIR / f"comparacao_{name.lower()}.json"
+    src = priority.OUT_DIR / f"comparison_{name.lower()}.json"
     if not src.exists():
-        print("comparação ainda não calculada (corre plano_oficial.head_to_head)")
+        print("comparação ainda não calculada (corre official_plan.head_to_head)")
         return
     slug = name.lower().replace("ã", "a")
     WEB_DIR.mkdir(parents=True, exist_ok=True)
-    (WEB_DIR / f"{slug}_comparacao.json").write_text(src.read_text())
+    (WEB_DIR / f"{slug}_comparison.json").write_text(src.read_text())
     print("comparação plano vs modelo exportada")
 
 
@@ -400,7 +400,7 @@ def export_fires(name: str = "Baião") -> None:
                 "properties": {"ano": year, "ha": round(float(fr["properties"].get("AreaHaPoly") or 0))},
             })
     WEB_DIR.mkdir(parents=True, exist_ok=True)
-    (WEB_DIR / f"{slug}_fogos.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats}))
+    (WEB_DIR / f"{slug}_fires.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats}))
     print(f"fogos: {len(feats)} perímetros ({len({f['properties']['ano'] for f in feats})} anos)")
 
 

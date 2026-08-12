@@ -2,17 +2,17 @@
 #
 # Uso diário:
 #   make app          arranca a aplicação
-#   make atualizar    refresca os dados que mudam (o que o cron corre)
+#   make refresh    refresca os data que mudam (o que o cron corre)
 #
 # Do zero, numa máquina nova:
-#   make setup && make dados && make app
+#   make setup && make data && make app
 
 MUN ?= Baião
 PY  := uv run python
 
-.PHONY: help setup dados grelha acessos sentinel arquivo arquivo-paciente secura \
-        tempos modelo afinar mapas comparar exportar heroi secura-imagens secura-anim app build parar \
-        atualizar retreinar cron nginx estado limpar
+.PHONY: help setup data grid access sentinel archive archive-patient dryness \
+        travel-times model tune maps compare export hero dryness-images dryness-animation app build stop \
+        refresh retrain cron nginx status clean
 
 help:
 	@echo "wildfire-prevention — priorização da prevenção de incêndios ($(MUN))"
@@ -20,31 +20,31 @@ help:
 	@echo "  ARRANCAR"
 	@echo "    make setup        instala tudo (uv sync, npm, libomp)"
 	@echo "    make app          aplicação em http://localhost:5175"
-	@echo "    make parar        pára a aplicação"
-	@echo "    make estado       o que está construído e quão recente é"
+	@echo "    make stop        pára a aplicação"
+	@echo "    make status       o que está construído e quão recente é"
 	@echo ""
 	@echo "  DADOS (ordem de dependência)"
-	@echo "    make dados        pipeline completo, do zero"
-	@echo "    make grelha       grelha de células: terreno + COS + histórico ICNF"
-	@echo "    make acessos      casas (MS), estradas, água (PMDFCI), bombeiros"
-	@echo "    make tempos       tempo de viagem dos bombeiros por estrada real"
+	@echo "    make data        pipeline completo, do zero"
+	@echo "    make grid       grid de células: terreno + COS + histórico ICNF"
+	@echo "    make access      casas (MS), estradas, água (PMDFCI), bombeiros"
+	@echo "    make travel-times       tempo de viagem dos bombeiros por estrada real"
 	@echo "    make sentinel     painel de vegetação por ano (10 anos)"
-	@echo "    make arquivo      composições mensais 2015-2025 (base da anomalia)"
-	@echo "    make secura       meses recentes de secura"
+	@echo "    make archive      composições mensais 2015-2025 (base da anomaly)"
+	@echo "    make dryness       meses recentes de dryness"
 	@echo ""
 	@echo "  MODELO"
-	@echo "    make modelo       treina e valida (imprime AUC honesto)"
-	@echo "    make afinar       busca de hiperparâmetros (validação separada)"
-	@echo "    make comparar     confronto com a cartografia oficial do PMDFCI"
-	@echo "    make mapas        PNG de diagnóstico: previsto vs. ardido"
+	@echo "    make model       treina e valida (imprime AUC honesto)"
+	@echo "    make tune       busca de hiperparâmetros (validação separada)"
+	@echo "    make compare     confronto com a cartografia oficial do PMDFCI"
+	@echo "    make maps        PNG de diagnóstico: previsto vs. ardido"
 	@echo ""
 	@echo "  PRODUÇÃO"
-	@echo "    make exportar     gera os GeoJSON que a aplicação lê"
-	@echo "    make heroi        imagem de fundo da landing (satélite do concelho)"
-	@echo "    make secura-imagens  uma imagem por mês de secura, prontas para animar"
-	@echo "    make secura-anim     anima os meses: MP4 na landing, GIF no Desktop"
-	@echo "    make atualizar    refresca ignições + fogos + secura + exporta"
-	@echo "    make retreinar    re-treina o modelo e exporta (após época de fogos)"
+	@echo "    make export     gera os GeoJSON que a aplicação lê"
+	@echo "    make hero        imagem de fundo da landing (satélite do concelho)"
+	@echo "    make dryness-images  uma imagem por mês de dryness, prontas para animar"
+	@echo "    make dryness-animation     anima os meses: MP4 na landing, GIF no Desktop"
+	@echo "    make refresh    refresca ignições + fogos + dryness + exporta"
+	@echo "    make retrain    re-treina o model e exporta (após época de fogos)"
 	@echo ""
 	@echo "  COLOCAR ONLINE"
 	@echo "    make build        build de produção da interface"
@@ -59,93 +59,93 @@ setup:
 	uv sync
 	cd webapp && npm install
 
-# ---------------------------------------------------------------------- dados
-# Ordem obrigatória: a grelha cria o ficheiro de features que os restantes
-# passos vão preenchendo (acessos escreve colunas, sentinel escreve o painel).
-dados: grelha acessos tempos sentinel arquivo secura exportar
+# ---------------------------------------------------------------------- data
+# Ordem obrigatória: a grid cria o ficheiro de features que os restantes
+# passos vão preenchendo (access escreve colunas, sentinel escreve o painel).
+data: grid access travel-times sentinel archive dryness export
 
-grelha:
+grid:
 	$(PY) -m wildfire_prevention.features $(MUN)
 
-acessos:
+access:
 	$(PY) -m wildfire_prevention.access $(MUN)
 
 # tempo de viagem dos bombeiros por rota real (OSRM), não por linha reta
-tempos:
-	$(PY) -m wildfire_prevention.tempo_resposta $(MUN)
+travel-times:
+	$(PY) -m wildfire_prevention.response_time $(MUN)
 
 sentinel:
 	$(PY) -m wildfire_prevention.veg_panel $(MUN)
 
-arquivo:
+archive:
 	$(PY) -m wildfire_prevention.monthly_archive $(MUN)
 
 # o Copernicus bloqueia a conta se abrirmos demasiadas sessões; esta variante
-# espera que desbloqueie e retoma sozinha (útil para o arquivo completo)
-arquivo-paciente:
+# espera que desbloqueie e retoma sozinha (útil para o archive completo)
+archive-patient:
 	$(PY) -m wildfire_prevention.run_archive $(MUN)
 
-secura:
-	$(PY) -m wildfire_prevention.seca_history $(MUN)
+dryness:
+	$(PY) -m wildfire_prevention.dryness_history $(MUN)
 
-# --------------------------------------------------------------------- modelo
-modelo:
+# --------------------------------------------------------------------- model
+model:
 	$(PY) -m wildfire_prevention.panel_model $(MUN)
 
-afinar:
+tune:
 	$(PY) -m wildfire_prevention.tune $(MUN)
 
 # PNG de diagnóstico: previsto vs. o que ardeu mesmo
-mapas:
+maps:
 	$(PY) -m wildfire_prevention.map_render $(MUN)
 
-comparar:
-	$(PY) -c "from wildfire_prevention.plano_oficial import head_to_head; \
+compare:
+	$(PY) -c "from wildfire_prevention.official_plan import head_to_head; \
 	          from wildfire_prevention.export_web import export_comparison; \
 	          import json; print(json.dumps(head_to_head('$(MUN)'), indent=2, ensure_ascii=False)); \
 	          export_comparison('$(MUN)')"
 
 # ------------------------------------------------------------------ produção
-exportar:
+export:
 	$(PY) -m wildfire_prevention.export_web $(MUN)
 
 # imagem de fundo da landing, a partir dos tiles de satélite do próprio concelho
-heroi:
+hero:
 	$(PY) -m wildfire_prevention.landing_hero $(MUN)
 
-# uma imagem por mês de secura, com escala partilhada, prontas para animar
+# uma imagem por mês de dryness, com escala partilhada, prontas para animar
 # (OUT=/outro/sitio para não usar o Desktop)
 OUT ?= $(HOME)/Desktop
-secura-imagens:
-	$(PY) -m wildfire_prevention.seca_frames $(MUN) "$(OUT)"
+dryness-images:
+	$(PY) -m wildfire_prevention.dryness_frames $(MUN) "$(OUT)"
 
 # anima os meses: MP4 + poster para a landing, GIF para partilhar
-secura-anim:
-	$(PY) -m wildfire_prevention.seca_anim $(MUN) "$(OUT)"
+dryness-animation:
+	$(PY) -m wildfire_prevention.dryness_animation $(MUN) "$(OUT)"
 
-atualizar:
-	$(PY) -m wildfire_prevention.atualizar $(MUN)
+refresh:
+	$(PY) -m wildfire_prevention.refresh $(MUN)
 
-# re-treina e GUARDA o modelo, depois reavalia e exporta. O modelo guardado é
+# re-treina e GUARDA o model, depois reavalia e exporta. O model guardado é
 # o que a atualização semanal usa — assim o mapa publicado tem sempre um
-# modelo identificável por trás, com data e parâmetros registados.
-retreinar:
+# model identificável por trás, com data e parâmetros registados.
+retrain:
 	$(PY) -c "from wildfire_prevention.panel_model import train; train('$(MUN)')"
-	$(MAKE) modelo comparar exportar
+	$(MAKE) model compare export
 
 app:
 	cd webapp && npm run dev
 
-# build de produção da interface (os dados NÃO são copiados para dist —
+# build de produção da interface (os data NÃO são copiados para dist —
 # o nginx serve /data/ diretamente de webapp/public/data, para o cron poder
-# atualizar sem reconstruir a interface)
+# refresh sem reconstruir a interface)
 build:
 	cd webapp && npm run build
 	@echo ""
 	@echo "interface construída em webapp/dist/"
 	@echo "configuração do nginx:  make nginx"
 
-parar:
+stop:
 	@lsof -ti :5175 | xargs kill 2>/dev/null || true
 	@echo "aplicação parada"
 
@@ -157,7 +157,7 @@ cron:
 	@echo "  crontab -e   e acrescentar:"
 	@echo ""
 	@echo "  PATH=$(dir $(shell command -v uv)):/usr/bin:/bin"
-	@echo "  0 6 * * 1 cd $(PWD) && $(shell command -v make) atualizar >> $(PWD)/data/cron.log 2>&1"
+	@echo "  0 6 * * 1 cd $(PWD) && $(shell command -v make) refresh >> $(PWD)/data/cron.log 2>&1"
 	@echo ""
 	@echo "  confirmar que ficou:  crontab -l"
 	@echo "  ver o registo:        tail -f $(PWD)/data/cron.log"
@@ -167,7 +167,7 @@ cron:
 
 nginx:
 	@echo "Servir a aplicação. O ponto crítico: /data/ é servido DIRETAMENTE de"
-	@echo "public/data, para o cron atualizar sem reconstruir a interface."
+	@echo "public/data, para o cron refresh sem reconstruir a interface."
 	@echo ""
 	@echo "server {"
 	@echo "    listen 80;"
@@ -178,7 +178,7 @@ nginx:
 	@echo "    # \$$uri.html serves /mapa as well as /mapa.html"
 	@echo "    location / { try_files \$$uri \$$uri.html \$$uri/ /index.html; }"
 	@echo ""
-	@echo "    # dados atualizados pelo cron, fora do build"
+	@echo "    # data atualizados pelo cron, fora do build"
 	@echo "    location /data/ {"
 	@echo "        alias $(PWD)/webapp/public/data/;"
 	@echo "        add_header Cache-Control \"no-cache\";"
@@ -187,9 +187,9 @@ nginx:
 	@echo ""
 	@echo "  make build   antes do primeiro arranque e sempre que a interface mudar"
 
-estado:
-	@$(PY) -m wildfire_prevention.estado $(MUN)
+status:
+	@$(PY) -m wildfire_prevention.status $(MUN)
 
-limpar:
+clean:
 	@echo "isto apaga só os produtos, nunca a cache de downloads"
 	rm -f data/out/*.png webapp/public/data/*.geojson

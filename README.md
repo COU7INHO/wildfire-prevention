@@ -28,7 +28,7 @@ technicians. Everything else is in English.
 ```bash
 make setup     # once: uv sync, npm install, libomp
 make app       # http://localhost:5175
-make estado    # what is built, and how recent it is
+make status    # what is built, and how recent it is
 ```
 
 Rebuilding everything from scratch takes hours and downloads ~10 GB of satellite
@@ -106,14 +106,14 @@ the official map is **frozen until 2030**, while this model **retrains**.
 
 ### The model is an identifiable artifact
 
-`make retreinar` saves the model to `data/out/modelo_<municipality>.txt` and
+`make retreinar` saves the model to `data/out/model_<municipality>.txt` and
 records, in a companion `.json`, **when it was trained, over which years, on how
 many rows, and with which variables**. The weekly update scores with that saved
 model rather than training a fresh one each time.
 
 This exists for a concrete reason: a published map informs decisions about public
 spending. Months later, it must still be possible to answer *which* model
-produced the map a decision was based on. `make estado` always reports the one in
+produced the map a decision was based on. `make status` always reports the one in
 use.
 
 ---
@@ -121,7 +121,7 @@ use.
 ## Automatic updates
 
 ```bash
-make atualizar    # ignitions + burned areas + dryness + export  (~3 min)
+make refresh    # ignitions + burned areas + dryness + export  (~3 min)
 make cron         # prints the crontab line for a weekly schedule
 make retreinar    # retrain the model (after each fire season)
 ```
@@ -187,15 +187,15 @@ wildfire_prevention/
   access.py          buildings, roads, water, fire stations -> grid columns
   veg_panel.py       per-year vegetation panel (Sentinel)
   monthly_archive.py monthly composites 2015-2025 (basis for the anomaly)
-  seca_history.py    recent dryness months (sliding window)
-  anomalia.py        dryness against the same month in previous years
+  dryness_history.py    recent dryness months (sliding window)
+  anomaly.py        dryness against the same month in previous years
   panel_model.py     model, tuned hyperparameters, susceptibility
   tune.py            hyperparameter search with a separate validation split
   priority.py        priority = susceptibility x exposure x difficulty
-  plano_oficial.py   PMDFCI hazard raster + comparison with uncertainty
+  official_plan.py   PMDFCI hazard raster + comparison with uncertainty
   export_web.py      the GeoJSON the application reads
-  atualizar.py       what the cron job runs
-  estado.py          make estado
+  refresh.py       what the cron job runs
+  status.py          make status
 webapp/              React + MapLibre (user interface in Portuguese)
 data/cache/          downloaded, ~10 GB, outside git
 data/out/            intermediate products

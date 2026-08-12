@@ -20,18 +20,18 @@ import time
 import traceback
 from datetime import datetime
 
-from . import export_web, occurrences, seca_history
+from . import export_web, occurrences, dryness_history
 
 
-def _step(nome: str, fn, *args, **kwargs) -> bool:
+def _step(label: str, fn, *args, **kwargs) -> bool:
     t0 = time.time()
-    print(f"\n=== {nome} ===", flush=True)
+    print(f"\n=== {label} ===", flush=True)
     try:
         fn(*args, **kwargs)
-        print(f"--- {nome}: OK ({time.time() - t0:.0f}s)", flush=True)
+        print(f"--- {label}: OK ({time.time() - t0:.0f}s)", flush=True)
         return True
     except Exception:
-        print(f"--- {nome}: FALHOU ({time.time() - t0:.0f}s)", flush=True)
+        print(f"--- {label}: FALHOU ({time.time() - t0:.0f}s)", flush=True)
         traceback.print_exc()
         return False
 
@@ -41,7 +41,7 @@ def main(name: str = "Baião") -> int:
     ok = {
         "ignições": _step("ignições (Proteção Civil)", occurrences.export, name),
         "fogos": _step("áreas ardidas (ICNF)", export_web.export_fires, name),
-        "secura": _step("secura (Sentinel-2)", seca_history.build, name, refresh_last=True),
+        "secura": _step("secura (Sentinel-2)", dryness_history.build, name, refresh_last=True),
     }
     # the export re-reads whatever the steps above produced, so run it regardless
     ok["mapa"] = _step("exportar dados do mapa", export_web.export, name)

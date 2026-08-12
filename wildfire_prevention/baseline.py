@@ -59,14 +59,14 @@ def _burn_by_year(name: str, lon: np.ndarray, lat: np.ndarray,
 
     try:
         layers = icnf_labels.list_year_layers()
-        anos = sorted(y for _, y in layers)
+        years = sorted(y for _, y in layers)
     except Exception:
-        layers, anos = None, None          # ICNF unreachable: cache is all we have
+        layers, years = None, None          # ICNF unreachable: cache is all we have
 
     if cache.exists() and not refresh:
         d = np.load(cache)
         em_cache = sorted(int(k[1:]) for k in d.files if k.startswith("y"))
-        if int(d["n_cells"]) == lon.size and (anos is None or em_cache == anos):
+        if int(d["n_cells"]) == lon.size and (years is None or em_cache == years):
             return {int(k[1:]): d[k] for k in d.files if k.startswith("y")}
 
     if layers is None:

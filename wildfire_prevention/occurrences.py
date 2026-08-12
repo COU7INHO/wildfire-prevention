@@ -82,7 +82,7 @@ def export(name: str = "Baião", year: int | None = None) -> Path:
     ]
     slug = name.lower().replace("ã", "a")
     WEB_DIR.mkdir(parents=True, exist_ok=True)
-    out = WEB_DIR / f"{slug}_ocorrencias.geojson"
+    out = WEB_DIR / f"{slug}_ignitions.geojson"
     out.write_text(json.dumps(
         {"type": "FeatureCollection",
          "properties": {"year": year, "fetched": date.today().isoformat(), "source": "ANEPC via fogos.pt"},

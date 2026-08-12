@@ -25,7 +25,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from .seca_frames import _moldura, camadas
+from .dryness_frames import _moldura, layers
 
 WEB_DIR = Path(__file__).resolve().parent.parent / "webapp" / "public"
 LARGURA = 1280     # plenty for a web figure; the print stills stay at 2800
@@ -34,37 +34,37 @@ ESPERA = 1.1       # seconds holding on each month
 TRANSICAO = 0.7    # seconds dissolving into the next
 
 
-def _sequencia(meses: list[dict]) -> list[tuple[int, int, float]]:
+def _sequencia(months: list[dict]) -> list[tuple[int, int, float]]:
     """(from, to, blend) per frame, looping back to the first month at the end."""
-    passos = []
-    n = len(meses)
+    steps = []
+    n = len(months)
     for i in range(n):
         for _ in range(int(ESPERA * FPS)):
-            passos.append((i, i, 0.0))
+            steps.append((i, i, 0.0))
         j = (i + 1) % n
         for k in range(int(TRANSICAO * FPS)):
-            passos.append((i, j, (k + 1) / int(TRANSICAO * FPS)))
-    return passos
+            steps.append((i, j, (k + 1) / int(TRANSICAO * FPS)))
+    return steps
 
 
 def build(name: str = "Baião", gif_dir: Path | None = None) -> dict:
     gif_dir = Path(gif_dir) if gif_dir else Path.home() / "Desktop"
-    meses = camadas(name, largura=LARGURA)
-    if len(meses) < 2:
+    months = layers(name, width=LARGURA)
+    if len(months) < 2:
         raise SystemExit("são precisos pelo menos dois meses para animar")
 
     sub = f"Secura da vegetação · {name}"
-    passos = _sequencia(meses)
-    print(f"{len(meses)} meses · {len(passos)} frames · {len(passos) / FPS:.1f}s")
+    steps = _sequencia(months)
+    print(f"{len(months)} meses · {len(steps)} frames · {len(steps) / FPS:.1f}s")
 
     tmp = Path(tempfile.mkdtemp(prefix="secura-"))
     try:
-        for n, (i, j, t) in enumerate(passos):
-            mapa = (meses[i]["imagem"] if t == 0.0
-                    else Image.blend(meses[i]["imagem"], meses[j]["imagem"], t))
+        for n, (i, j, t) in enumerate(steps):
+            mapa = (months[i]["imagem"] if t == 0.0
+                    else Image.blend(months[i]["imagem"], months[j]["imagem"], t))
             # the label cuts, it does not dissolve
-            titulo = meses[j if t >= 0.5 else i]["titulo"]
-            _moldura(mapa.copy(), titulo, sub).save(tmp / f"{n:04d}.png")
+            title = months[j if t >= 0.5 else i]["titulo"]
+            _moldura(mapa.copy(), title, sub).save(tmp / f"{n:04d}.png")
 
         WEB_DIR.mkdir(parents=True, exist_ok=True)
         mp4 = WEB_DIR / "secura.mp4"
@@ -80,7 +80,7 @@ def build(name: str = "Baião", gif_dir: Path | None = None) -> dict:
             "-movflags", "+faststart", str(mp4),
         ], check=True)
 
-        _moldura(meses[0]["imagem"].copy(), meses[0]["titulo"], sub).save(
+        _moldura(months[0]["imagem"].copy(), months[0]["titulo"], sub).save(
             poster, "JPEG", quality=80, optimize=True)
 
         # GIF has 256 colours, so a palette computed from these frames rather

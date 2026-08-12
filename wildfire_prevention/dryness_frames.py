@@ -74,13 +74,13 @@ def _basemap(bbox, z=ZOOM):
         return Image.open(cache).convert("RGB"), geom
     print(f"mosaico: {len(tx)}x{len(ty)} tiles no zoom {z}")
 
-    mosaico = Image.new("RGB", (len(tx) * 256, len(ty) * 256))
+    mosaic = Image.new("RGB", (len(tx) * 256, len(ty) * 256))
     for i, xi in enumerate(tx):
         for j, yj in enumerate(ty):
             try:
                 r = requests.get(f"{TILES}/{z}/{yj}/{xi}", timeout=30)
                 if r.status_code == 200:
-                    mosaico.paste(Image.open(BytesIO(r.content)).convert("RGB"), (i * 256, j * 256))
+                    mosaic.paste(Image.open(BytesIO(r.content)).convert("RGB"), (i * 256, j * 256))
             except Exception:
                 pass
             time.sleep(0.04)
@@ -88,23 +88,23 @@ def _basemap(bbox, z=ZOOM):
     # crop to the exact bbox, in mosaic pixel coordinates
     px0, py0 = (x0 - int(x0)) * 256, (y0 - int(y0)) * 256
     px1, py1 = px0 + (x1 - x0) * 256, py0 + (y1 - y0) * 256
-    recorte = mosaico.crop((int(px0), int(py0), int(px1), int(py1)))
-    recorte.save(cache)
-    return recorte, geom
+    window = mosaic.crop((int(px0), int(py0), int(px1), int(py1)))
+    window.save(cache)
+    return window, geom
 
 
 # -------------------------------------------------------------------- data
 def _raster(valores, lon, lat):
     """The cells sit on a regular lon/lat grid, so this is pure indexing."""
     ulon, ulat = np.unique(lon), np.unique(lat)
-    grelha = np.full((ulat.size, ulon.size), np.nan, dtype=np.float32)
+    grid = np.full((ulat.size, ulon.size), np.nan, dtype=np.float32)
     ix = np.searchsorted(ulon, lon)
     iy = np.searchsorted(ulat, lat)
-    grelha[iy, ix] = valores
-    return grelha[::-1], ulon, ulat[::-1]      # north at the top
+    grid[iy, ix] = valores
+    return grid[::-1], ulon, ulat[::-1]      # north at the top
 
 
-def _resample(grelha, ulon, ulat, geom, size, z=ZOOM):
+def _resample(grid, ulon, ulat, geom, size, z=ZOOM):
     """Plate carree cells onto the Web Mercator pixels of the basemap."""
     x0, y0, x1, y1 = geom
     larg, alt = size
@@ -117,23 +117,23 @@ def _resample(grelha, ulon, ulat, geom, size, z=ZOOM):
 
     ci = np.clip(np.searchsorted(ulon, lons) - 1, 0, ulon.size - 1)
     ri = np.clip(np.searchsorted(-ulat, -lats) - 1, 0, ulat.size - 1)
-    return grelha[np.ix_(ri, ci)]
+    return grid[np.ix_(ri, ci)]
 
 
 # ------------------------------------------------------------------ layout
 def _fonte(tamanho, negrito=False):
-    for caminho in ("/System/Library/Fonts/HelveticaNeue.ttc",
+    for path in ("/System/Library/Fonts/HelveticaNeue.ttc",
                     "/System/Library/Fonts/Helvetica.ttc",
                     "/System/Library/Fonts/Supplemental/Arial.ttf"):
-        if Path(caminho).exists():
+        if Path(path).exists():
             try:
-                return ImageFont.truetype(caminho, tamanho, index=1 if negrito else 0)
+                return ImageFont.truetype(path, tamanho, index=1 if negrito else 0)
             except Exception:
                 continue
     return ImageFont.load_default()
 
 
-def _moldura(img, titulo, subtitulo):
+def _moldura(img, title, subtitle):
     """Title, shared colour bar and attribution, over a soft dark gradient."""
     larg, alt = img.size
     d = ImageDraw.Draw(img, "RGBA")
@@ -152,8 +152,8 @@ def _moldura(img, titulo, subtitulo):
     def px(v):
         return int(round(v * k))
 
-    d.text((px(54), px(44)), subtitulo.upper(), font=_fonte(px(21)), fill=(190, 205, 218, 255))
-    d.text((px(54), px(76)), titulo, font=_fonte(px(64), negrito=True), fill=(255, 255, 255, 255))
+    d.text((px(54), px(44)), subtitle.upper(), font=_fonte(px(21)), fill=(190, 205, 218, 255))
+    d.text((px(54), px(76)), title, font=_fonte(px(64), negrito=True), fill=(255, 255, 255, 255))
 
     bx, by, bw, bh = px(54), alt - px(96), px(420), px(14)
     for i in range(bw):                          # the colour scale itself
@@ -168,15 +168,15 @@ def _moldura(img, titulo, subtitulo):
     d.text((bx, by - px(30)), "Escala igual nos três meses", font=_fonte(px(17)),
            fill=(160, 176, 192, 255))
 
-    credito = "Sentinel-2 (Copernicus) · imagem de satélite © Esri"
+    credit = "Sentinel-2 (Copernicus) · imagem de satélite © Esri"
     fc = _fonte(px(17))
-    d.text((larg - px(54) - d.textlength(credito, font=fc), alt - px(44)),
-           credito, font=fc, fill=(150, 166, 182, 255))
+    d.text((larg - px(54) - d.textlength(credit, font=fc), alt - px(44)),
+           credit, font=fc, fill=(150, 166, 182, 255))
     return img
 
 
 # -------------------------------------------------------------------- main
-def camadas(name: str = "Baião", largura: int = LARGURA) -> list[dict]:
+def layers(name: str = "Baião", width: int = LARGURA) -> list[dict]:
     """One finished map image per month, WITHOUT the frame.
 
     The caption is left off on purpose so an animation can cross-fade the maps
@@ -185,86 +185,86 @@ def camadas(name: str = "Baião", largura: int = LARGURA) -> list[dict]:
     """
     f = np.load(OUT_DIR / f"features_{name.lower()}.npz")
     lon, lat = f["lon"], f["lat"]
-    seca = np.load(OUT_DIR / f"seca_history_{name.lower()}.npz")
-    meta = json.loads((OUT_DIR / f"seca_history_{name.lower()}.json").read_text())
-    meses = meta["months"]
+    seca = np.load(OUT_DIR / f"dryness_history_{name.lower()}.npz")
+    meta = json.loads((OUT_DIR / f"dryness_history_{name.lower()}.json").read_text())
+    months = meta["months"]
 
     # NDMI lives in [-1, 1]; cloud and division artefacts push a handful of
     # cells far outside it, and one of those would flatten the whole scale.
-    limpos = {}
-    for m in meses:
+    cleaned = {}
+    for m in months:
         v = np.asarray(seca[m["key"]], dtype=np.float32)
         v[~np.isfinite(v)] = np.nan
-        limpos[m["key"]] = np.clip(v, -1.0, 1.0)
+        cleaned[m["key"]] = np.clip(v, -1.0, 1.0)
 
-    todos = np.concatenate([v[np.isfinite(v)] for v in limpos.values()])
-    lo, hi = np.percentile(todos, [2, 98])
+    pooled = np.concatenate([v[np.isfinite(v)] for v in cleaned.values()])
+    lo, hi = np.percentile(pooled, [2, 98])
     print(f"escala partilhada: NDMI {lo:.3f} a {hi:.3f}")
 
     bbox = (float(lon.min()), float(lat.min()), float(lon.max()), float(lat.max()))
     base, geom = _basemap(bbox)
-    escala = largura / base.size[0]
-    base = base.resize((largura, int(base.size[1] * escala)), Image.LANCZOS)
+    scale = width / base.size[0]
+    base = base.resize((width, int(base.size[1] * scale)), Image.LANCZOS)
 
-    saidas = []
-    for m in meses:
-        grelha, ulon, ulat = _raster(limpos[m["key"]], lon, lat)
+    outputs = []
+    for m in months:
+        grid, ulon, ulat = _raster(cleaned[m["key"]], lon, lat)
 
-        dentro = np.isfinite(grelha)
-        cheia = np.where(dentro, grelha, np.nanmedian(grelha))
+        inside = np.isfinite(grid)
+        filled = np.where(inside, grid, np.nanmedian(grid))
         # smooth values and mask together, so the edge fades instead of fraying
-        suave = gaussian_filter(cheia, SUAVIZAR)
-        peso = gaussian_filter(dentro.astype(np.float32), SUAVIZAR)
+        smooth = gaussian_filter(filled, SUAVIZAR)
+        weight = gaussian_filter(inside.astype(np.float32), SUAVIZAR)
 
-        campo = _resample(suave, ulon, ulat, geom, base.size)
-        alfa = _resample(peso, ulon, ulat, geom, base.size)
+        field = _resample(smooth, ulon, ulat, geom, base.size)
+        alpha = _resample(weight, ulon, ulat, geom, base.size)
 
         # dryness is the inverse of moisture: high NDMI is a wet plant
-        secura = np.clip((hi - campo) / (hi - lo), 0.0, 1.0)
-        cor = CORES(secura)[..., :3]
+        dryness = np.clip((hi - field) / (hi - lo), 0.0, 1.0)
+        color = CORES(dryness)[..., :3]
 
         # Modulate the colour by the satellite's own brightness. Flat alpha
         # blending buries the terrain under a wash of colour; multiplying by the
         # shading keeps ridges, valleys and tracks visible through it, and that
         # is where the eye reads detail.
         lum = np.asarray(base.convert("L"), dtype=np.float32)[..., None] / 255.0
-        cor = np.clip(cor * (0.68 + 0.66 * lum), 0.0, 1.0)
+        color = np.clip(color * (0.68 + 0.66 * lum), 0.0, 1.0)
 
-        rgba = np.empty(cor.shape[:2] + (4,), dtype=np.uint8)
-        rgba[..., :3] = (cor * 255).astype(np.uint8)
-        rgba[..., 3] = (np.clip(alfa, 0, 1) * 255 * OPACIDADE).astype(np.uint8)
+        rgba = np.empty(color.shape[:2] + (4,), dtype=np.uint8)
+        rgba[..., :3] = (color * 255).astype(np.uint8)
+        rgba[..., 3] = (np.clip(alpha, 0, 1) * 255 * OPACIDADE).astype(np.uint8)
 
-        quadro = base.copy().convert("RGBA")
-        quadro.alpha_composite(Image.fromarray(rgba, "RGBA"))
+        frame = base.copy().convert("RGBA")
+        frame.alpha_composite(Image.fromarray(rgba, "RGBA"))
 
-        ano, mes = m["key"].split("_")[1].split("-")
-        saidas.append({
-            "ano": ano, "mes": mes,
-            "titulo": f"{MESES[mes]} de {ano}",
-            "imagem": quadro.convert("RGB"),
+        year, month = m["key"].split("_")[1].split("-")
+        outputs.append({
+            "ano": year, "mes": month,
+            "titulo": f"{MESES[month]} de {year}",
+            "imagem": frame.convert("RGB"),
         })
 
-    return saidas
+    return outputs
 
 
 def build(name: str = "Baião", out_dir: Path | None = None) -> list[Path]:
     out_dir = Path(out_dir) if out_dir else Path.home() / "Desktop"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    saidas = []
-    for c in camadas(name):
-        quadro = _moldura(c["imagem"], c["titulo"], f"Secura da vegetação · {name}")
-        destino = out_dir / f"secura_{name.lower()}_{c['ano']}-{c['mes']}.png"
-        quadro.save(destino)
-        saidas.append(destino)
-        print(f"  {destino}  {quadro.size[0]}x{quadro.size[1]}")
-    return saidas
+    outputs = []
+    for c in layers(name):
+        frame = _moldura(c["imagem"], c["titulo"], f"Secura da vegetação · {name}")
+        dest = out_dir / f"secura_{name.lower()}_{c['ano']}-{c['mes']}.png"
+        frame.save(dest)
+        outputs.append(dest)
+        print(f"  {dest}  {frame.size[0]}x{frame.size[1]}")
+    return outputs
 
 
 if __name__ == "__main__":
     import sys
 
     args = [a for a in sys.argv[1:] if a]
-    nome = args[0] if args else "Baião"
-    destino = args[1] if len(args) > 1 else None
-    build(nome, destino)
+    municipality = args[0] if args else "Baião"
+    dest = args[1] if len(args) > 1 else None
+    build(municipality, dest)

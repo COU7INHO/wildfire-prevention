@@ -2,7 +2,7 @@
 
 Builds one clean-scene NDMI composite per month, so the app can show HOW dryness
 EVOLVED (map slider + trend line) instead of a single snapshot. Resumable: each
-month is saved into seca_history_<name>.npz as it completes.
+month is saved into dryness_history_<name>.npz as it completes.
 """
 
 from __future__ import annotations
@@ -41,9 +41,9 @@ def recent_months(today: date | None = None, n: int = N_MONTHS):
 def build(name: str = "Baião", refresh_last: bool = False) -> Path:
     """Build the recent-months dryness series. refresh_last recomputes the most
     recent month even if cached — new cloud-free images arrive every few days."""
-    path = OUT_DIR / f"seca_history_{name.lower()}.npz"
+    path = OUT_DIR / f"dryness_history_{name.lower()}.npz"
     data = dict(np.load(path)) if path.exists() else {}
-    meta_path = OUT_DIR / f"seca_history_{name.lower()}.json"
+    meta_path = OUT_DIR / f"dryness_history_{name.lower()}.json"
     meta = json.loads(meta_path.read_text()) if meta_path.exists() else {"months": []}
 
     months = recent_months()

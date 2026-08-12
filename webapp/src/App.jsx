@@ -63,7 +63,7 @@ const FUEL_COLOR = [
 
 // current vegetation dryness (NDMI): low = dry = red, high = moist = green.
 // Squares over water/urban (null) are hidden. Key selects the month (slider).
-const securaColor = (key) => [
+const drynessColorExpr = (key) => [
   "case", ["==", ["get", key], null], "rgba(0,0,0,0)",
   ["interpolate", ["linear"], ["get", key],
     0.05, "#b3261e",
@@ -71,7 +71,7 @@ const securaColor = (key) => [
     0.25, "#f2c200",
     0.35, "#3a9d4e"],
 ];
-const SECURA_COLOR = securaColor("ndmi");
+const DRYNESS_COLOR = drynessColorExpr("ndmi");
 
 // anomaly vs the same month in past years: negative = drier than usual (red),
 // positive = wetter than usual (blue). Diverging scale centred on zero.
@@ -87,7 +87,7 @@ const anomColor = (key) => [
 
 // official PMDFCI 2021 hazard surface, shown as percentile like ours so the two
 // maps are directly comparable (their raster is a product of factors, not classes)
-const OFICIAL_COLOR = [
+const OFFICIAL_COLOR = [
   "case", ["==", ["get", "oficial_pct"], null], "rgba(0,0,0,0)",
   ["step", ["get", "oficial_pct"],
     "#3a9d4e",
@@ -100,8 +100,8 @@ const VIEWS = {
   priority: { color: null, showTop: true, opacity: 0.55 }, // color from priorityColor(alert)
   susceptibility: { color: SUSC_COLOR, showTop: false, opacity: 0.55 },
   fuel: { color: FUEL_COLOR, showTop: false, opacity: 0.65 },
-  secura: { color: SECURA_COLOR, showTop: false, opacity: 0.6 },
-  oficial: { color: OFICIAL_COLOR, showTop: false, opacity: 0.55 },
+  secura: { color: DRYNESS_COLOR, showTop: false, opacity: 0.6 },
+  oficial: { color: OFFICIAL_COLOR, showTop: false, opacity: 0.55 },
 };
 
 const OVERLAYS = ["ovl-estradas", "ovl-agua-fill", "ovl-agua-line", "ovl-agua-pt", "ovl-casas"];
@@ -122,9 +122,9 @@ function drynessColor(i) {
 // Context overlays (houses, roads, water, ignitions, past fires). Shared by both
 // panes so the comparison view carries the same context on either side.
 function addContextLayers(map) {
-  map.addSource("estradas", { type: "geojson", data: `/data/baiao_estradas.geojson${BUST}` });
-  map.addSource("agua", { type: "geojson", data: `/data/baiao_agua.geojson${BUST}` });
-  map.addSource("casas", { type: "geojson", data: `/data/baiao_casas.geojson${BUST}` });
+  map.addSource("estradas", { type: "geojson", data: `/data/baiao_roads.geojson${BUST}` });
+  map.addSource("agua", { type: "geojson", data: `/data/baiao_water.geojson${BUST}` });
+  map.addSource("casas", { type: "geojson", data: `/data/baiao_buildings.geojson${BUST}` });
   map.addLayer({
     id: "ovl-estradas", type: "line", source: "estradas",
     layout: { visibility: "none" },
@@ -172,8 +172,8 @@ function addContextLayers(map) {
     paint: { "circle-color": "#ffd54f", "circle-radius": 2.5, "circle-stroke-color": "#5d4037", "circle-stroke-width": 0.8 },
   });
 
-  // current-year ignition points (ANEPC via fogos.pt)
-  map.addSource("ignicoes", { type: "geojson", data: `/data/baiao_ocorrencias.geojson${BUST}` });
+  // current-year ignition points (ANEPC via fires.pt)
+  map.addSource("ignicoes", { type: "geojson", data: `/data/baiao_ignitions.geojson${BUST}` });
   map.addLayer({
     id: "ovl-ignicoes", type: "circle", source: "ignicoes",
     layout: { visibility: "none" },
@@ -198,7 +198,7 @@ function addContextLayers(map) {
   map.on("mouseleave", "ovl-ignicoes", () => (map.getCanvas().style.cursor = ""));
 
   // historical burnt-area perimeters (ICNF), filtered by year
-  map.addSource("fogos", { type: "geojson", data: `/data/baiao_fogos.geojson${BUST}` });
+  map.addSource("fogos", { type: "geojson", data: `/data/baiao_fires.geojson${BUST}` });
   map.addLayer({
     id: "ovl-fogos", type: "fill", source: "fogos",
     filter: ["==", ["get", "ano"], 0],
@@ -219,7 +219,7 @@ const cameraOf = (m) => ({
 });
 
 // Whole-municipality view: where every map starts and returns to on each view change
-const VISTA_CONCELHO = { center: [-7.99, 41.17], zoom: 11.2, bearing: 0, pitch: 0 };
+const WHOLE_MUNICIPALITY = { center: [-7.99, 41.17], zoom: 11.2, bearing: 0, pitch: 0 };
 
 export default function App() {
   // Housekeeping (resize, re-align) also emits move events. Without this guard
@@ -237,44 +237,44 @@ export default function App() {
   const container2Ref = useRef(null);
   const [selected, setSelected] = useState(null);
   const [view, setView] = useState("priority");
-  const [overlays, setOverlays] = useState({ casas: false, estradas: false, agua: false, ignicoes: false });
+  const [overlays, setOverlays] = useState({ buildings: false, roads: false, water: false, ignitions: false });
   const [alert, setAlert] = useState(5); // top X% of the municipality in red
   const [sentinelDate, setSentinelDate] = useState(null);
   const [dryness, setDryness] = useState(null);
   const [fireYear, setFireYear] = useState("");
-  const [secaSeries, setSecaSeries] = useState([]);
-  const [secaMonth, setSecaMonth] = useState(-1); // index into secaSeries; -1 = latest month
-  const [secaModo, setSecaModo] = useState("atual"); // "atual" | "anomalia"
-  const [comparacao, setComparacao] = useState(null);
+  const [drynessSeries, setDrynessSeries] = useState([]);
+  const [drynessMonth, setDrynessMonth] = useState(-1); // index into drynessSeries; -1 = latest month
+  const [drynessMode, setDrynessMode] = useState("atual"); // "atual" | "anomaly"
+  const [comparison, setComparison] = useState(null);
   const [anoComp, setAnoComp] = useState(""); // fire year overlaid on both panes
   const [map2Ready, setMap2Ready] = useState(0);
-  const [fontes, setFontes] = useState([]);
-  const [modelo, setModelo] = useState(null);
-  const [verMetodologia, setVerMetodologia] = useState(false);
-  const [painel, setPainel] = useState(false); // control sheet, phones only
+  const [sources, setSources] = useState([]);
+  const [model, setModel] = useState(null);
+  const [showMethod, setShowMethod] = useState(false);
+  const [drawer, setDrawer] = useState(false); // control sheet, phones only
 
   useEffect(() => {
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: STYLE,
-      ...VISTA_CONCELHO,
+      ...WHOLE_MUNICIPALITY,
     });
     map.addControl(new maplibregl.NavigationControl(), "bottom-right");
     mapRef.current = map;
 
     map.on("load", async () => {
       const data = await fetch(DATA_URL).then((r) => r.json());
-      fetch(`/data/baiao_comparacao.json${BUST}`)
+      fetch(`/data/baiao_comparison.json${BUST}`)
         .then((r) => (r.ok ? r.json() : null))
-        .then(setComparacao)
+        .then(setComparison)
         .catch(() => {});
       setSentinelDate(data.properties?.sentinel_date ?? null);
-      setFontes(data.properties?.fontes ?? []);
-      setModelo(data.properties?.modelo ?? null);
+      setSources(data.properties?.sources ?? []);
+      setModel(data.properties?.model ?? null);
       setDryness({ index: data.properties?.dryness_index, pctDry: data.properties?.pct_dry });
-      const series = data.properties?.seca_series ?? [];
-      setSecaSeries(series);
-      setSecaMonth(series.length - 1);
+      const series = data.properties?.dryness_series ?? [];
+      setDrynessSeries(series);
+      setDrynessMonth(series.length - 1);
 
       map.addSource("zones", { type: "geojson", data });
       map.addLayer({
@@ -313,10 +313,10 @@ export default function App() {
       view === "priority" ? priorityColor(alert)
       : view === "oficial" ? SUSC_COLOR
       : VIEWS[view].color;
-    if (view === "secura" && secaSeries.length && secaMonth >= 0) {
-      color = secaModo === "anomalia"
-        ? anomColor(`anom_m${secaMonth}`)
-        : securaColor(`ndmi_m${secaMonth}`);
+    if (view === "secura" && drynessSeries.length && drynessMonth >= 0) {
+      color = drynessMode === "anomaly"
+        ? anomColor(`anom_m${drynessMonth}`)
+        : drynessColorExpr(`ndmi_m${drynessMonth}`);
     }
     map.setPaintProperty("zones-fill", "fill-color", color);
     map.setPaintProperty("zones-fill", "fill-opacity", VIEWS[view].opacity);
@@ -325,7 +325,7 @@ export default function App() {
       map.setFilter("zones-top", [">=", ["get", "pct"], 100 - alert]);
       map.setLayoutProperty("zones-top", "visibility", VIEWS[view].showTop ? "visible" : "none");
     }
-  }, [view, alert, secaMonth, secaSeries, secaModo]);
+  }, [view, alert, drynessMonth, drynessSeries, drynessMode]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -359,7 +359,7 @@ export default function App() {
         m2.addSource("zones", { type: "geojson", data });
         m2.addLayer({
           id: "zones-fill", type: "fill", source: "zones",
-          paint: { "fill-color": OFICIAL_COLOR, "fill-opacity": 0.55 },
+          paint: { "fill-color": OFFICIAL_COLOR, "fill-opacity": 0.55 },
         });
         addContextLayers(m2);
         quietly(() => m2.jumpTo(cameraOf(map))); // the style load may have nudged it
@@ -418,9 +418,9 @@ export default function App() {
   // detail from one map is never carried over into another one.
   useEffect(() => {
     setSelected(null);
-    setPainel(false); // on a phone, picking a view means you want to see the map
-    mapRef.current?.jumpTo(VISTA_CONCELHO);
-    map2Ref.current?.jumpTo(VISTA_CONCELHO);
+    setDrawer(false); // on a phone, picking a view means you want to see the map
+    mapRef.current?.jumpTo(WHOLE_MUNICIPALITY);
+    map2Ref.current?.jumpTo(WHOLE_MUNICIPALITY);
   }, [view]);
 
   // main map must resize when leaving the split layout too
@@ -433,11 +433,11 @@ export default function App() {
     const vis = (on) => (on ? "visible" : "none");
     for (const map of [mapRef.current, map2Ref.current]) {
       if (!map?.getLayer?.("ovl-casas")) continue;
-      map.setLayoutProperty("ovl-estradas", "visibility", vis(overlays.estradas));
-      map.setLayoutProperty("ovl-casas", "visibility", vis(overlays.casas));
-      map.setLayoutProperty("ovl-ignicoes", "visibility", vis(overlays.ignicoes));
+      map.setLayoutProperty("ovl-estradas", "visibility", vis(overlays.roads));
+      map.setLayoutProperty("ovl-casas", "visibility", vis(overlays.buildings));
+      map.setLayoutProperty("ovl-ignicoes", "visibility", vis(overlays.ignitions));
       for (const id of ["ovl-agua-fill", "ovl-agua-line", "ovl-agua-pt"]) {
-        map.setLayoutProperty(id, "visibility", vis(overlays.agua));
+        map.setLayoutProperty(id, "visibility", vis(overlays.water));
       }
     }
   }, [overlays, map2Ready]);
@@ -446,21 +446,21 @@ export default function App() {
   // Opening the menu closes the cell card: the card describes a point on the map,
   // and leaving it behind the drawer would have it describe something you can no
   // longer see.
-  const alternarPainel = () => {
-    setPainel((v) => !v);
+  const toggleDrawer = () => {
+    setDrawer((v) => !v);
     setSelected(null);
   };
 
   return (
-    <div className={`app${painel ? " painel-aberto" : ""}${selected ? " detalhe-aberto" : ""}`}>
-      <button className="painel-btn" onClick={alternarPainel} aria-expanded={painel}
-              aria-label={painel ? "Fechar menu" : "Abrir menu"}>
+    <div className={`app${drawer ? " drawer-open" : ""}${selected ? " detail-open" : ""}`}>
+      <button className="drawer-btn" onClick={toggleDrawer} aria-expanded={drawer}
+              aria-label={drawer ? "Fechar menu" : "Abrir menu"}>
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"
              stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          {painel ? <path d="M4 4l12 12M16 4L4 16" /> : <path d="M3 5h14M3 10h14M3 15h14" />}
+          {drawer ? <path d="M4 4l12 12M16 4L4 16" /> : <path d="M3 5h14M3 10h14M3 15h14" />}
         </svg>
       </button>
-      {painel && <div className="painel-fundo" onClick={() => setPainel(false)} />}
+      {drawer && <div className="drawer-scrim" onClick={() => setDrawer(false)} />}
 
       <aside className="sidebar">
         <div className="brand">
@@ -498,35 +498,35 @@ export default function App() {
             {view === "susceptibility" && "Propensão estrutural: onde arde de forma recorrente, ao longo dos anos."}
             {view === "fuel" && "Tipo de vegetação e uso do solo (COS 2023)."}
             {view === "secura" && "Estado atual da vegetação medido por satélite, apenas sobre coberto vegetal. Descritivo, não é previsão."}
-            {view === "oficial" && "Comparação lado a lado: modelo atualizado (esquerda) e cartografia oficial do PMDFCI 2021-2030 (direita)."}
+            {view === "oficial" && "Comparação lado a lado: model atualizado (esquerda) e cartografia oficial do PMDFCI 2021-2030 (direita)."}
           </p>
 
-          {view === "oficial" && comparacao && (
+          {view === "oficial" && comparison && (
             <>
-              <div className="fireyear">
+              <div className="fire-year">
                 <label>Sobrepor os incêndios reais de:</label>
                 <select value={anoComp} onChange={(e) => setAnoComp(e.target.value)}>
                   <option value="">Nenhum ano</option>
-                  {comparacao.anos.map((a) => (
+                  {comparison.anos.map((a) => (
                     <option key={a.ano} value={a.ano}>{a.ano}</option>
                   ))}
                 </select>
               </div>
-              <Comparacao dados={comparacao} anoAtivo={anoComp} />
+              <ComparisonTable dados={comparison} anoAtivo={anoComp} />
             </>
           )}
 
           {view === "oficial" && (
             <div className="docs">
               <a className="doc-btn" target="_blank" rel="noreferrer"
-                 href="https://fogos.icnf.pt/pmdfci/13_Porto/1302/3G/Caderno_II/PMDFCI_1302_Baiao_Caderno_II.pdf">
+                 href="https://fires.icnf.pt/pmdfci/13_Porto/1302/3G/Caderno_II/PMDFCI_1302_Baiao_Caderno_II.pdf">
                 Abrir o plano oficial (Caderno II)
               </a>
             </div>
           )}
 
           {view === "susceptibility" && (
-            <div className="fireyear">
+            <div className="fire-year">
               <label>Sobrepor área ardida real (ICNF):</label>
               <select value={fireYear} onChange={(e) => setFireYear(e.target.value)}>
                 <option value="">Nenhum ano</option>
@@ -540,29 +540,29 @@ export default function App() {
           )}
 
           {view === "secura" && (() => {
-            const cur = secaSeries[secaMonth];
+            const cur = drynessSeries[drynessMonth];
             const idx = cur?.idx ?? dryness?.index;
             const pctDry = cur?.pct_dry ?? dryness?.pctDry;
             if (idx == null) return null;
             return (
               <>
                 <div className="toggle" style={{ marginTop: 12 }}>
-                  <button className={secaModo === "atual" ? "on" : ""} onClick={() => setSecaModo("atual")}>
+                  <button className={drynessMode === "atual" ? "on" : ""} onClick={() => setDrynessMode("atual")}>
                     Estado atual
                   </button>
-                  <button className={secaModo === "anomalia" ? "on" : ""} onClick={() => setSecaModo("anomalia")}>
+                  <button className={drynessMode === "anomaly" ? "on" : ""} onClick={() => setDrynessMode("anomaly")}>
                     vs. o normal
                   </button>
                 </div>
 
-                {secaModo === "atual" ? (
+                {drynessMode === "atual" ? (
                   <div className="gauge">
                     <div className="gauge-num" style={{ color: drynessColor(idx) }}>
                       {idx}<span>/100</span>
                     </div>
                     <div className="gauge-label">
                       Secura em <strong>{cur?.mes ?? "atual"}</strong>: <strong>{drynessLabel(idx)}</strong><br />
-                      {pctDry}% da vegetação seca
+                      {pctDry}% da vegetação dryness
                     </div>
                   </div>
                 ) : (
@@ -577,24 +577,24 @@ export default function App() {
                   </div>
                 )}
 
-                {secaSeries.length > 1 && (
+                {drynessSeries.length > 1 && (
                   <>
                     <div className="slider-row">
                       <label>
-                        Mês: <strong>{secaSeries[secaMonth]?.mes}</strong> (arraste para ver a evolução)
+                        Mês: <strong>{drynessSeries[drynessMonth]?.mes}</strong> (arraste para ver a evolução)
                       </label>
                       <input
-                        type="range" min="0" max={secaSeries.length - 1} step="1"
-                        value={secaMonth}
-                        onChange={(e) => setSecaMonth(Number(e.target.value))}
+                        type="range" min="0" max={drynessSeries.length - 1} step="1"
+                        value={drynessMonth}
+                        onChange={(e) => setDrynessMonth(Number(e.target.value))}
                       />
                     </div>
-                    <SecaChart series={secaSeries} active={secaMonth} />
+                    <DrynessChart series={drynessSeries} active={drynessMonth} />
                   </>
                 )}
 
                 {cur?.imagens?.length > 0 && (
-                  <div className="imgdates" key={`imgs-${secaMonth}`}>
+                  <div className="imgdates" key={`imgs-${drynessMonth}`}>
                     Imagens de satélite usadas em {cur.mes}:
                     <ul>
                       {/* same-day scenes (split granules) collapse into one line;
@@ -607,7 +607,7 @@ export default function App() {
                       )
                         .sort()
                         .map(([data, nuvem], i) => (
-                          <li key={`${secaMonth}-${i}-${data}`}>
+                          <li key={`${drynessMonth}-${i}-${data}`}>
                             {data.split("-").reverse().join("/")}, {nuvem}% de nuvem
                           </li>
                         ))}
@@ -621,7 +621,7 @@ export default function App() {
           {view === "priority" && (
             <div className="slider-row">
               <label>
-                Zonas em alerta: <strong>top {alert}%</strong> do concelho
+                Zonas em alert: <strong>top {alert}%</strong> do concelho
               </label>
               <input
                 type="range" min="2" max="15" step="1" value={alert}
@@ -634,18 +634,18 @@ export default function App() {
             {/* the dot carries the layer's colour on the map — identification,
                 not decoration */}
             {[
-              ["casas", "Edifícios", "#ffd54f"],
-              ["estradas", "Estradas e caminhos", "#f5f5f5"],
-              ["agua", "Pontos de água", "#0277bd"],
-              ["ignicoes", "Ignições de 2026", "#ff6d00"],
-            ].map(([key, label, cor]) => (
+              ["buildings", "Edifícios", "#ffd54f"],
+              ["roads", "Estradas e caminhos", "#f5f5f5"],
+              ["water", "Pontos de água", "#0277bd"],
+              ["ignitions", "Ignições de 2026", "#ff6d00"],
+            ].map(([key, label, color]) => (
               <label key={key} className="layer-check">
                 <input
                   type="checkbox"
                   checked={overlays[key]}
                   onChange={(e) => setOverlays({ ...overlays, [key]: e.target.checked })}
                 />
-                <span className="layer-dot" style={{ background: cor }} />
+                <span className="layer-dot" style={{ background: color }} />
                 {label}
               </label>
             ))}
@@ -657,7 +657,7 @@ export default function App() {
             {view === "priority" && "Prioridade de intervenção"}
             {view === "susceptibility" && "Propensão estrutural"}
             {view === "fuel" && "Ocupação do solo"}
-            {view === "secura" && (secaModo === "anomalia" ? "Secura vs. o normal" : "Secura da vegetação")}
+            {view === "secura" && (drynessMode === "anomaly" ? "Secura vs. o normal" : "Secura da vegetação")}
             {view === "oficial" && "Escala nos dois mapas"}
           </h2>
           {(view === "priority"
@@ -681,7 +681,7 @@ export default function App() {
                 ["Média (top 30%)", "#f2c200"],
                 ["Baixa", "#3a9d4e"],
               ]
-            : view === "secura" && secaModo === "anomalia"
+            : view === "secura" && drynessMode === "anomaly"
             ? [
                 ["Muito mais seco que o normal", "#b3261e"],
                 ["Mais seco que o normal", "#e8710a"],
@@ -691,7 +691,7 @@ export default function App() {
               ]
             : view === "secura"
             ? [
-                ["Muito seca", "#b3261e"],
+                ["Muito dryness", "#b3261e"],
                 ["Seca", "#e8710a"],
                 ["Moderada", "#f2c200"],
                 ["Húmida", "#3a9d4e"],
@@ -713,18 +713,18 @@ export default function App() {
         </div>
 
         <div className="section">
-          <button className="metodo-btn" onClick={() => setVerMetodologia(true)}>
+          <button className="method-btn" onClick={() => setShowMethod(true)}>
             Metodologia
             <span>Como é calculado o risco e a prioridade</span>
           </button>
         </div>
 
-        {fontes.length > 0 && (
+        {sources.length > 0 && (
           <div className="section">
-            <details className="fontes">
+            <details className="sources">
               <summary>Fontes de dados</summary>
               <ul>
-                {fontes.map((f) => (
+                {sources.map((f) => (
                   <li key={f.o_que}>
                     <strong>{f.o_que}</strong>
                     <span>{f.quem}</span>
@@ -732,14 +732,14 @@ export default function App() {
                   </li>
                 ))}
               </ul>
-              <div className="fontes-docs">
+              <div className="sources-docs">
                 Documentos do plano municipal (PMDFCI 2021-2030):
                 <a target="_blank" rel="noreferrer"
-                   href="https://fogos.icnf.pt/pmdfci/13_Porto/1302/3G/Caderno_I/PMDFCI_1302_Baiao_Caderno_I.pdf">
+                   href="https://fires.icnf.pt/pmdfci/13_Porto/1302/3G/Caderno_I/PMDFCI_1302_Baiao_Caderno_I.pdf">
                   Caderno I — Diagnóstico
                 </a>
                 <a target="_blank" rel="noreferrer"
-                   href="https://fogos.icnf.pt/pmdfci/13_Porto/1302/3G/Caderno_II/PMDFCI_1302_Baiao_Caderno_II.pdf">
+                   href="https://fires.icnf.pt/pmdfci/13_Porto/1302/3G/Caderno_II/PMDFCI_1302_Baiao_Caderno_II.pdf">
                   Caderno II — Plano de Ação
                 </a>
               </div>
@@ -759,29 +759,29 @@ export default function App() {
           <span className="pane-label">Plano oficial 2021</span>
         </div>
         {selected && <Detail props={selected} alert={alert} onClose={() => setSelected(null)} />}
-        {verMetodologia && (
-          <Metodologia modelo={modelo} comparacao={comparacao}
-                       onClose={() => setVerMetodologia(false)} />
+        {showMethod && (
+          <MethodWindow model={model} comparison={comparison}
+                       onClose={() => setShowMethod(false)} />
         )}
       </div>
     </div>
   );
 }
 
-function Metodologia({ modelo, comparacao, onClose }) {
-  const inc = comparacao?.incerteza;
+function MethodWindow({ model, comparison, onClose }) {
+  const inc = comparison?.incerteza;
   return (
-    <div className="modal-fundo" onClick={onClose}>
+    <div className="modal-scrim" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <button className="modal-x" onClick={onClose} aria-label="Fechar">×</button>
         <h2>Metodologia</h2>
 
         <h3>A que perguntas responde</h3>
-        <ul className="modal-perguntas">
+        <ul className="modal-questions">
           <li><strong>Onde intervir primeiro?</strong> Ordena o território pelo
               efeito esperado da gestão de combustível, combinando a propensão
               para arder com o que está exposto e com a dificuldade de combate.</li>
-          <li><strong>Que zonas ardem de forma recorrente?</strong> Estima, para
+          <li><strong>Que zones ardem de forma recorrente?</strong> Estima, para
               cada quadrícula, a tendência estrutural para ser percorrida pelo
               fogo ao longo dos anos.</li>
           <li><strong>Como está a vegetação agora?</strong> Mede o vigor e a
@@ -799,41 +799,41 @@ function Metodologia({ modelo, comparacao, onClose }) {
           uma previsão para um dia nem para um incêndio concreto.
         </p>
 
-        {modelo && (
+        {model && (
           <>
-            <h3>Variáveis usadas ({modelo.n_variaveis})</h3>
-            {modelo.variaveis.map((g) => (
-              <div className="var-grupo" key={g.grupo}>
-                <span className="var-titulo">{g.grupo}</span>
+            <h3>Variáveis usadas ({model.n_variaveis})</h3>
+            {model.variaveis.map((g) => (
+              <div className="var-group" key={g.grupo}>
+                <span className="var-title">{g.grupo}</span>
                 <ul>{g.itens.map((i) => <li key={i}>{i}</li>)}</ul>
               </div>
             ))}
             <h3>Duas camadas, variáveis diferentes</h3>
             <p>
-              {modelo.excluidas?.length > 0 && (
+              {model.excluidas?.length > 0 && (
                 <>
-                  {modelo.excluidas.join(" e ")} <strong>são usadas</strong>,
+                  {model.excluidas.join(" e ")} <strong>são usadas</strong>,
                   mas não no cálculo do risco. Entram na camada seguinte:
                 </>
               )}
             </p>
-            <table className="modal-camadas">
+            <table className="modal-layers">
               <tbody>
                 <tr>
                   <th>Risco de arder</th>
                   <td>terreno, vegetação, presença humana e histórico de fogo
-                      (as {modelo.n_variaveis} variáveis acima)</td>
+                      (as {model.n_variaveis} variáveis acima)</td>
                 </tr>
                 <tr>
                   <th>Prioridade de intervenção</th>
                   <td>risco × exposição (habitações próximas) ×{" "}
                       <strong>dificuldade de combate</strong> (distância a pontos
-                      de água e a estradas, e tempo de viagem dos bombeiros
+                      de água e a roads, e tempo de viagem dos bombeiros
                       calculado pela rede viária real)</td>
                 </tr>
               </tbody>
             </table>
-            <p className="modal-nota">
+            <p className="modal-note">
               A separação foi verificada, não assumida: incluídas no risco, estas
               variáveis não acrescentavam capacidade de acertar, porque repetiam de
               forma menos direta o que o terreno já indicava. Não influenciam a
@@ -843,25 +843,25 @@ function Metodologia({ modelo, comparacao, onClose }) {
 
             <h3>Como foi treinado</h3>
             <p>
-              Com o histórico do concelho entre {modelo.anos?.[0]} e {modelo.anos?.[1]}:
-              cada uma das {modelo.n_celulas?.toLocaleString("pt-PT")} quadrículas
+              Com o histórico do concelho entre {model.anos?.[0]} e {model.anos?.[1]}:
+              cada uma das {model.n_celulas?.toLocaleString("pt-PT")} quadrículas
               observada em cada ano, num total de{" "}
-              {modelo.n_linhas?.toLocaleString("pt-PT")} observações.
+              {model.n_linhas?.toLocaleString("pt-PT")} observações.
               Para cada ano, o cálculo usa apenas informação <strong>anterior</strong>,
               ou seja a vegetação e o histórico do ano precedente, de modo a que
               nunca esteja a olhar para o resultado que tenta estimar.
             </p>
-            <p className="modal-nota">
+            <p className="modal-note">
               Modelo em produção treinado a{" "}
-              {modelo.treinado_em?.split("-").reverse().join("/")}, com registo
+              {model.treinado_em?.split("-").reverse().join("/")}, com registo
               dos parâmetros e dos dados usados, para que qualquer mapa publicado
-              seja rastreável ao modelo que o produziu.
+              seja rastreável ao model que o produziu.
               <br /><br />
-              <strong>Projeto em desenvolvimento.</strong> O modelo é
+              <strong>Projeto em desenvolvimento.</strong> O model é
               reprocessado quando se verificam alterações relevantes nos dados
               de entrada: publicação de nova área ardida pelo ICNF, nova versão da
               carta de ocupação do solo, ou revisão das variáveis. A
-              metodologia continua sob avaliação e os resultados podem mudar
+              methodology continua sob avaliação e os resultados podem mudar
               entre versões.
             </p>
           </>
@@ -869,7 +869,7 @@ function Metodologia({ modelo, comparacao, onClose }) {
 
         <h3>Como foi verificado</h3>
         <p>
-          Testou-se a estimar anos que o modelo nunca tinha visto, e também
+          Testou-se a estimar anos que o model nunca tinha visto, e também
           metade do concelho que nunca tinha visto, para confirmar que reconhece
           padrões em vez de memorizar lugares.
           {inc && (
@@ -881,10 +881,10 @@ function Metodologia({ modelo, comparacao, onClose }) {
         </p>
 
         <h3>O que isto não faz</h3>
-        <ul className="modal-limites">
+        <ul className="modal-limits">
           <li>Não prevê onde vai arder num dia concreto. Para isso seria preciso
               vento, temperatura e humidade do momento.</li>
-          <li>Não sabe onde os bombeiros travaram fogos que teriam alastrado:
+          <li>Não sabe onde os bombeiros travaram fires que teriam alastrado:
               os dados mostram o que ardeu, não o que foi evitado.</li>
           <li>A ocupação do solo é de 2023, anterior aos incêndios de 2024.</li>
           <li>A resolução é de cerca de 29 metros: não distingue detalhes mais
@@ -898,7 +898,7 @@ function Metodologia({ modelo, comparacao, onClose }) {
   );
 }
 
-function Comparacao({ dados, anoAtivo }) {
+function ComparisonTable({ dados, anoAtivo }) {
   const { anos, media: m, incerteza: inc } = dados;
   if (!m) return null;
   return (
@@ -939,7 +939,7 @@ function Comparacao({ dados, anoAtivo }) {
           <> A <strong>{inc.dif_media > 0 ? "cartografia oficial" : "modelo"}</strong> acerta
           mais vezes, de forma consistente.</>
         )}{" "}
-        A diferença está noutro lado: o modelo é recalculado todos os anos,
+        A diferença está noutro lado: o model é recalculado todos os anos,
         enquanto a cartografia oficial se mantém fixa até 2030.
 
         <span className="info" tabIndex={0}>
@@ -951,7 +951,7 @@ function Comparacao({ dados, anoAtivo }) {
             {dados.anos[0]?.ano}–{dados.anos[dados.anos.length - 1]?.ano}.
             {inc && (
               <>
-                {" "}Média: {m.plano.toFixed(3)} (cartografia) vs {m.nosso.toFixed(3)} (modelo).
+                {" "}Média: {m.plano.toFixed(3)} (cartografia) vs {m.nosso.toFixed(3)} (model).
                 Diferença de {inc.dif_media > 0 ? "+" : ""}{inc.dif_media.toFixed(3)},
                 intervalo de confiança a 95% [{inc.ic95[0].toFixed(3)}, {inc.ic95[1].toFixed(3)}],
                 obtido por bootstrap sobre blocos espaciais
@@ -965,7 +965,7 @@ function Comparacao({ dados, anoAtivo }) {
   );
 }
 
-function SecaChart({ series, active }) {
+function DrynessChart({ series, active }) {
   const W = 300, H = 92, PAD = 22;
   const pts = series.map((s, i) => [
     PAD + (i * (W - 2 * PAD)) / Math.max(1, series.length - 1),

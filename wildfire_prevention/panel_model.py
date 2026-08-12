@@ -149,11 +149,11 @@ def readiness(name: str = "Baião", veg_year: int | None = None) -> np.ndarray:
 
 
 def model_path(name: str) -> Path:
-    return OUT_DIR / f"modelo_{name.lower()}.txt"
+    return OUT_DIR / f"model_{name.lower()}.txt"
 
 
 def model_meta_path(name: str) -> Path:
-    return OUT_DIR / f"modelo_{name.lower()}.json"
+    return OUT_DIR / f"model_{name.lower()}.json"
 
 
 def train(name: str = "Baião", drop=PROD_DROP) -> dict:

@@ -16,7 +16,7 @@ export function explain(props) {
   const fuel = (props.fuel || "").toLowerCase();
   if (fuel.includes("mato")) reasons.push("é mato, que arranca e alastra com facilidade");
   else if (fuel.includes("floresta")) reasons.push("é floresta densa, combustível abundante");
-  else if (fuel.includes("agricult")) reasons.push("é zona agrícola");
+  else if (fuel.includes("agricult")) reasons.push("é zone agrícola");
   else if (fuel) reasons.push(`é ${fuel}`);
 
   if (props.vezes_ardeu >= 3) reasons.push(`ardeu repetidamente, em média ${props.vezes_ardeu} vezes desde 2009`);
@@ -26,9 +26,9 @@ export function explain(props) {
   if (props.slope >= 20) reasons.push(`está numa encosta muito inclinada (${props.slope}°), onde o fogo sobe depressa`);
   else if (props.slope >= 12) reasons.push(`está em encosta (${props.slope}°)`);
 
-  if (props.dist_casas <= 100) reasons.push(`está dentro da faixa legal de gestão de combustível de habitações, com casas a ${props.dist_casas} m`);
-  if (props.houses_250m >= 20) reasons.push(`há um aglomerado de ${props.houses_250m} casas a menos de 250 m`);
-  else if (props.dist_casas > 100 && props.dist_casas <= 300) reasons.push(`há casas por perto (a ${props.dist_casas} m)`);
+  if (props.dist_casas <= 100) reasons.push(`está dentro da faixa legal de gestão de combustível de habitações, com buildings a ${props.dist_casas} m`);
+  if (props.houses_250m >= 20) reasons.push(`há um aglomerado de ${props.houses_250m} buildings a menos de 250 m`);
+  else if (props.dist_casas > 100 && props.dist_casas <= 300) reasons.push(`há buildings por perto (a ${props.dist_casas} m)`);
 
   if (props.agua_m >= 1500) reasons.push(`a água mais próxima para reabastecer fica a ${(props.agua_m / 1000).toFixed(1)} km, o que dificulta o combate e torna a prevenção mais importante`);
   if (props.estrada_m >= 300) reasons.push(`o acesso é difícil (estrada a ${props.estrada_m} m)`);
@@ -38,7 +38,7 @@ export function explain(props) {
 }
 
 export function consequenceText(props) {
-  if (props.houses_250m >= 20) return `Aglomerado de ${props.houses_250m} casas (250 m)`;
+  if (props.houses_250m >= 20) return `Aglomerado de ${props.houses_250m} buildings (250 m)`;
   if (props.dist_casas <= 100) return "Casas mesmo ao lado";
   if (props.dist_casas <= 250) return "Habitações próximas";
   if (props.dist_casas <= 500) return "Alguma exposição a habitações";

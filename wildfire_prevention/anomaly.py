@@ -23,7 +23,7 @@ OUT_DIR = Path(__file__).resolve().parent.parent / "data" / "out"
 
 def _load(name: str):
     arch = np.load(OUT_DIR / f"monthly_archive_{name.lower()}.npz")
-    hist = np.load(OUT_DIR / f"seca_history_{name.lower()}.npz")
+    hist = np.load(OUT_DIR / f"dryness_history_{name.lower()}.npz")
     return arch, hist
 
 

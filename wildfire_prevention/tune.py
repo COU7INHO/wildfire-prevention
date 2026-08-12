@@ -19,7 +19,7 @@ import numpy as np
 from lightgbm import LGBMClassifier
 from sklearn.metrics import roc_auc_score
 
-from . import baseline, panel_model, plano_oficial
+from . import baseline, panel_model, official_plan
 
 OUT_DIR = Path(__file__).resolve().parent.parent / "data" / "out"
 
@@ -57,7 +57,7 @@ def run(name: str = "Baião", max_configs: int = 48):
     f = np.load(OUT_DIR / f"features_{name.lower()}.npz")
     burn = baseline._burn_by_year(name, f["lon"], f["lat"])
     n = f["lon"].size
-    oficial = plano_oficial.sample_cells(name)
+    oficial = official_plan.sample_cells(name)
     ok = ~np.isnan(oficial)
 
     val_target = _burned_in(burn, (2020, 2021), n)

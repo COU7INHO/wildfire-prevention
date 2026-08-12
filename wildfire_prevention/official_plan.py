@@ -49,7 +49,7 @@ def head_to_head(name: str = "Baião", plan_year: int = 2021) -> dict:
     """Fair comparison: our model trained ONLY on data the plan also had
     (<= plan_year), both scored against the fires that came after.
 
-    Written to data/out/comparacao_<name>.json for the app to display."""
+    Written to data/out/comparison_<name>.json for the app to display."""
     import json
 
     from lightgbm import LGBMClassifier
@@ -73,7 +73,7 @@ def head_to_head(name: str = "Baião", plan_year: int = 2021) -> dict:
     f = np.load(OUT_DIR / f"features_{name.lower()}.npz")
     burn = baseline._burn_by_year(name, f["lon"], f["lat"])
 
-    anos, nosso_w, plano_w = [], 0, 0
+    years, nosso_w, plano_w = [], 0, 0
     for yr in sorted(y_ for y_ in burn if y_ > plan_year):
         t = burn[yr][ok]
         if t.sum() < 200:      # too few burned cells to score meaningfully
@@ -82,7 +82,7 @@ def head_to_head(name: str = "Baião", plan_year: int = 2021) -> dict:
         a_no = float(roc_auc_score(t, ours[ok]))
         nosso_w += a_no > a_of
         plano_w += a_of > a_no
-        anos.append({"ano": int(yr), "ardeu_pct": round(float(t.mean()) * 100, 1),
+        years.append({"ano": int(yr), "ardeu_pct": round(float(t.mean()) * 100, 1),
                      "plano": round(a_of, 3), "nosso": round(a_no, 3)})
 
     # Is the gap real, or noise? Spatial block bootstrap: resample BLOCKS (not
@@ -97,7 +97,7 @@ def head_to_head(name: str = "Baião", plan_year: int = 2021) -> dict:
     o_, s_ = official[ok], ours[ok]
 
     per_year_difs = []
-    for yr in [a["ano"] for a in anos]:
+    for yr in [a["ano"] for a in years]:
         t = burn[yr][ok]
         d = []
         for _ in range(300):
@@ -117,13 +117,13 @@ def head_to_head(name: str = "Baião", plan_year: int = 2021) -> dict:
         total |= burn[yr]
     out = {
         "plan_year": plan_year,
-        "anos": anos,
+        "anos": years,
         # two honest summaries, because they answer different questions:
         # "media" = average of the per-year scores (predicting a GIVEN year)
         # "global" = one pooled score for "burned at any point in the period"
         #            (a multi-year horizon, dominated by the big-fire year)
-        "media": {"plano": round(float(np.mean([a["plano"] for a in anos])), 3),
-                  "nosso": round(float(np.mean([a["nosso"] for a in anos])), 3)},
+        "media": {"plano": round(float(np.mean([a["plano"] for a in years])), 3),
+                  "nosso": round(float(np.mean([a["nosso"] for a in years])), 3)},
         "global": {"plano": round(float(roc_auc_score(total[ok], official[ok])), 3),
                    "nosso": round(float(roc_auc_score(total[ok], ours[ok])), 3)},
         "vitorias": {"nosso": nosso_w, "plano": plano_w},
@@ -134,7 +134,7 @@ def head_to_head(name: str = "Baião", plan_year: int = 2021) -> dict:
             "prob_plano_melhor": round(float((mean_dif > 0).mean()) * 100),
         },
     }
-    (OUT_DIR / f"comparacao_{name.lower()}.json").write_text(json.dumps(out, indent=2))
+    (OUT_DIR / f"comparison_{name.lower()}.json").write_text(json.dumps(out, indent=2))
     return out
 
 

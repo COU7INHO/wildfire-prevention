@@ -36,14 +36,14 @@ def main(name: str = "Baião") -> None:
     for label, p in [
         ("grelha de células (terreno, COS, histórico)", OUT / f"features_{slug}.npz"),
         ("painel de vegetação por ano", OUT / f"veg_panel_{slug}.npz"),
-        ("arquivo mensal (base da anomalia)", OUT / f"monthly_archive_{slug}.npz"),
-        ("secura dos meses recentes", OUT / f"seca_history_{slug}.npz"),
+        ("arquivo mensal (base da anomaly)", OUT / f"monthly_archive_{slug}.npz"),
+        ("secura dos meses recentes", OUT / f"dryness_history_{slug}.npz"),
     ]:
         print(f"  {'✓' if p.exists() else '✗'} {label:<44} {_age(p)}")
 
     print("\nMODELO EM PRODUÇÃO")
-    mp = OUT / f"modelo_{slug}.txt"
-    mm = OUT / f"modelo_{slug}.json"
+    mp = OUT / f"model_{slug}.txt"
+    mm = OUT / f"model_{slug}.json"
     if mp.exists() and mm.exists():
         m = json.loads(mm.read_text())
         print(f"  ✓ treinado em {m['treinado_em'][:16].replace('T', ' ')}  ({_age(mp)})")
@@ -80,8 +80,8 @@ def main(name: str = "Baião") -> None:
               f"obtidas em {p.get('fetched','?')}")
     fog = WEB / f"{web}_fogos.geojson"
     if fog.exists():
-        anos = {f["properties"]["ano"] for f in json.loads(fog.read_text())["features"]}
-        print(f"  áreas ardidas: {min(anos)}-{max(anos)}")
+        years = {f["properties"]["ano"] for f in json.loads(fog.read_text())["features"]}
+        print(f"  áreas ardidas: {min(years)}-{max(years)}")
     print()
 
 

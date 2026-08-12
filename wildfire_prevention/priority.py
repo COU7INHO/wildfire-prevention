@@ -55,9 +55,9 @@ def response_minutes(dist_bombeiros_m: np.ndarray, name: str = "Baião") -> np.n
     calibrated to local routing (19 km/h effective in straight-line terms)
     instead of the original optimistic 50 km/h.
     """
-    from . import tempo_resposta
+    from . import response_time
 
-    real = tempo_resposta.load(name)
+    real = response_time.load(name)
     if real is not None and real.size == dist_bombeiros_m.size:
         return real
     return dist_bombeiros_m / 1000.0 * 3.10

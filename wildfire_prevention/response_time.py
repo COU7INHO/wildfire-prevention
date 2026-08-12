@@ -35,8 +35,8 @@ ESPACAMENTO_M = 700
 
 def _stations(name: str):
     poly, bbox = municipality_polygon(name)
-    dentro = [p for p in fetch_fire_stations(name, bbox) if poly.contains(Point(p[0], p[1]))]
-    return dentro or fetch_fire_stations(name, bbox), poly
+    inside = [p for p in fetch_fire_stations(name, bbox) if poly.contains(Point(p[0], p[1]))]
+    return inside or fetch_fire_stations(name, bbox), poly
 
 
 def _grid(poly, espacamento_m: float = ESPACAMENTO_M):
@@ -51,14 +51,14 @@ def _grid(poly, espacamento_m: float = ESPACAMENTO_M):
     return pts
 
 
-def _route_minutes(quarteis, destinos):
+def _route_minutes(stations, destinos):
     """Minutes from the fastest station to each destination (NaN if unroutable)."""
     out = np.full(len(destinos), np.nan)
-    src = ";".join(str(i) for i in range(len(quarteis)))
+    src = ";".join(str(i) for i in range(len(stations)))
     for i in range(0, len(destinos), LOTE):
         lote = destinos[i:i + LOTE]
-        coords = ";".join(f"{x},{y}" for x, y in list(quarteis) + lote)
-        dst = ";".join(str(j) for j in range(len(quarteis), len(quarteis) + len(lote)))
+        coords = ";".join(f"{x},{y}" for x, y in list(stations) + lote)
+        dst = ";".join(str(j) for j in range(len(stations), len(stations) + len(lote)))
         try:
             r = requests.get(f"{OSRM}/{coords}?sources={src}&destinations={dst}", timeout=90).json()
             if r.get("code") == "Ok":
@@ -71,12 +71,12 @@ def _route_minutes(quarteis, destinos):
 
 
 def build(name: str = "Baião") -> np.ndarray:
-    quarteis, poly = _stations(name)
+    stations, poly = _stations(name)
     pts = _grid(poly)
-    print(f"{len(quarteis)} quartéis | {len(pts)} pontos a encaminhar "
+    print(f"{len(stations)} quartéis | {len(pts)} pontos a encaminhar "
           f"({(len(pts) + LOTE - 1) // LOTE} pedidos)")
 
-    mins = _route_minutes(quarteis, pts)
+    mins = _route_minutes(stations, pts)
     ok = np.isfinite(mins)
     print(f"rotas obtidas: {ok.sum()} de {len(pts)}")
     pts_ok = np.array(pts)[ok]
@@ -90,16 +90,16 @@ def build(name: str = "Baião") -> np.ndarray:
     tree = cKDTree(np.column_stack([pts_ok[:, 0] * kx, pts_ok[:, 1] * ky]))
     d, i = tree.query(np.column_stack([lon * kx, lat * ky]), k=4)
     w = 1.0 / np.maximum(d, 1.0) ** 2          # inverse distance weighting
-    tempo = (mins_ok[i] * w).sum(axis=1) / w.sum(axis=1)
+    minutes = (mins_ok[i] * w).sum(axis=1) / w.sum(axis=1)
 
-    np.save(OUT_DIR / f"tempo_bombeiros_{name.lower()}.npy", tempo.astype(np.float32))
-    print(f"tempo de viagem por célula: mediana {np.median(tempo):.0f} min | "
-          f"p90 {np.percentile(tempo, 90):.0f} min | máx {tempo.max():.0f} min")
-    return tempo
+    np.save(OUT_DIR / f"brigade_minutes_{name.lower()}.npy", minutes.astype(np.float32))
+    print(f"tempo de viagem por célula: mediana {np.median(minutes):.0f} min | "
+          f"p90 {np.percentile(minutes, 90):.0f} min | máx {minutes.max():.0f} min")
+    return minutes
 
 
 def load(name: str = "Baião") -> np.ndarray | None:
-    p = OUT_DIR / f"tempo_bombeiros_{name.lower()}.npy"
+    p = OUT_DIR / f"brigade_minutes_{name.lower()}.npy"
     return np.load(p) if p.exists() else None
 
 
@@ -107,16 +107,16 @@ if __name__ == "__main__":
     import sys
 
     name = sys.argv[1] if len(sys.argv) > 1 else "Baião"
-    tempo = build(name)
+    minutes = build(name)
 
     # validate on random cells never used to build the surface
-    quarteis, poly = _stations(name)
+    stations, poly = _stations(name)
     f = np.load(OUT_DIR / f"features_{name.lower()}.npz")
     rng = np.random.default_rng(99)
     idx = rng.choice(len(f["lon"]), 60, replace=False)
     dest = [(float(f["lon"][i]), float(f["lat"][i])) for i in idx]
-    real = _route_minutes(quarteis, dest)
-    est = tempo[idx]
+    real = _route_minutes(stations, dest)
+    est = minutes[idx]
     antigo = f["dist_bombeiros_m"][idx] * 1.4 / 50_000 * 60
     m = np.isfinite(real)
     print(f"\nvalidação em {m.sum()} células não usadas na construção:")
