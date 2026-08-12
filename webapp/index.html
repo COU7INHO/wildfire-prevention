@@ -5,11 +5,220 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <meta name="description" content="Onde fazer gestão de combustível primeiro, com base no histórico de incêndios, terreno, vegetação e exposição de habitações." />
-    <title>Prevenção de Incêndio — Baião</title>
+    <meta
+      name="description"
+      content="Onde fazer gestão de combustível primeiro. Prioriza a prevenção de incêndio à escala do município, a partir do histórico de incêndios, do terreno, da vegetação por satélite e da exposição de habitações."
+    />
+    <link rel="stylesheet" href="/src/landing.css" />
+    <title>Prevenção de Incêndio Rural — prevenir onde mais protege</title>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <header class="hero">
+      <div class="hero-media" role="presentation"></div>
+      <div class="hero-veil" role="presentation"></div>
+
+      <div class="hero-content">
+        <p class="eyebrow">
+          <img src="/icon-192.png" alt="" width="26" height="26" />
+          Prevenção de Incêndio Rural
+        </p>
+        <h1>Prevenir onde mais protege.</h1>
+        <p class="lead">
+          O orçamento anual de gestão de combustível chega para uma fração do
+          território. Esta ferramenta ordena o município pelo peso da
+          intervenção em cada sítio, e explica cada posição em linguagem
+          corrente.
+        </p>
+        <div class="cta">
+          <a class="btn" href="/mapa.html">Abrir o mapa</a>
+          <a class="btn secondary" href="#como">Como funciona</a>
+        </div>
+      </div>
+
+    </header>
+
+    <main>
+      <section class="product">
+        <img
+          src="/screens-2200.webp"
+          srcset="/screens-1100.webp 1100w, /screens-2200.webp 2200w"
+          sizes="(max-width: 900px) 92vw, 852px"
+          width="2200"
+          height="1190"
+          alt="A aplicação num portátil, num tablet e num telemóvel, com o mapa de propensão a incêndio de Baião."
+        />
+        <p>No escritório e no terreno, com a mesma informação.</p>
+      </section>
+
+      <section class="band">
+        <h2>O problema não é falta de mapa. É falta de ordem.</h2>
+        <div class="cards">
+          <article>
+            <h3>O plano está congelado</h3>
+            <p>
+              A carta de perigosidade do plano municipal em vigor foi traçada
+              em 2021 e mantém-se fixa até 2030. A vegetação que ela descreve
+              já ardeu, cresceu ou mudou de espécie desde então.
+            </p>
+          </article>
+          <article>
+            <h3>O orçamento é limitado</h3>
+            <p>
+              Nenhum município limpa tudo num ano. A decisão que conta não é
+              <em>se</em> há risco, é por onde começar quando só se pode tratar
+              uma parte.
+            </p>
+          </article>
+          <article>
+            <h3>Arder não é o mesmo que fazer estragos</h3>
+            <p>
+              Uma encosta de mato longe de tudo e a mesma encosta encostada a
+              um lugar não valem a mesma intervenção, mesmo com risco igual.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="band alt" id="como">
+        <h2>Três perguntas, cruzadas numa só ordem</h2>
+        <div class="formula">
+            <article class="factor">
+              <span class="factor-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M2 19l6-8 4 5 3-4 7 7z" />
+                </svg>
+              </span>
+              <h3>Onde arde</h3>
+              <p>
+                Dezassete anos de áreas ardidas do ICNF, cruzadas com declive,
+                exposição solar, tipo de vegetação e o estado da vegetação
+                medido por satélite.
+              </p>
+            </article>
+
+            <span class="formula-op" aria-hidden="true">×</span>
+
+            <article class="factor">
+              <span class="factor-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 11l9-7 9 7" />
+                  <path d="M6 10v10h12V10" />
+                </svg>
+              </span>
+              <h3>O que está exposto</h3>
+              <p>
+                18 914 edifícios detetados por aprendizagem automática sobre
+                imagem de satélite, com o tamanho do aglomerado a pesar mais do
+                que a simples distância.
+              </p>
+            </article>
+
+            <span class="formula-op" aria-hidden="true">×</span>
+
+            <article class="factor">
+              <span class="factor-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 3c4 5 6 7.2 6 9.6a6 6 0 0 1-12 0C6 10.2 8 8 12 3z" />
+                </svg>
+              </span>
+              <h3>Quão difícil é combater</h3>
+              <p>
+                Pontos de água do plano municipal, acesso por estrada e o tempo
+                real de viagem do quartel mais próximo, calculado pela rede
+                viária e não em linha reta.
+              </p>
+            </article>
+        </div>
+        <p class="aside-note">
+          A prevenção vale mais onde o combate chega tarde. Por isso a
+          dificuldade não é um detalhe do fim: é um dos três fatores.
+        </p>
+      </section>
+
+      <section class="band refresh">
+        <div class="scan-scene" role="presentation">
+          <div class="scan-beam"></div>
+          <div class="scan-grid"></div>
+          <div class="scan-veil"></div>
+        </div>
+
+        <h2>Atualiza-se sozinha</h2>
+        <p class="body">
+          Todas as semanas a ferramenta vai buscar as ignições do ano, as áreas
+          ardidas publicadas pelo ICNF e imagem nova do Sentinel-2, e volta a
+          calcular o estado da vegetação. Compara-o com a mediana do mesmo mês
+          entre 2015 e 2025, para distinguir o verão normal do verão seco.
+        </p>
+        <p class="body small">
+          O Sentinel-2 passa sobre Baião de cinco em cinco dias.
+        </p>
+      </section>
+
+      <section class="band alt">
+        <h2>O que isto não faz</h2>
+        <p class="body">
+          Um mapa publicado serve de base a decisões de despesa pública. Estes
+          números estão aqui pela mesma razão por que estão no código.
+        </p>
+        <ul class="limits">
+          <li>
+            <strong>Não prevê o dia.</strong> Não entra meteorologia. O que
+            calcula é propensão estrutural, não o risco de amanhã.
+          </li>
+          <li>
+            <strong>Não é comprovadamente melhor do que o plano oficial.</strong>
+            Num teste sobre anos que nenhum dos dois tinha visto, a diferença
+            ficou dentro da margem de erro. O que difere é que o plano está fixo
+            até 2030 e este modelo volta a treinar.
+          </li>
+          <li>
+            <strong>Não vê as faixas de gestão.</strong> A resolução é de 29
+            metros. A faixa mediana do plano tem 0,09 hectares, estreita demais
+            para ser acompanhada por satélite.
+          </li>
+          <li>
+            <strong>Não sabe onde os bombeiros travaram o fogo.</strong> Os
+            dados registam onde ardeu, nunca o incêndio que não chegou a
+            crescer. Nenhum modelo de incêndios escapa a isto.
+          </li>
+        </ul>
+      </section>
+
+      <section class="band closing">
+        <h2>Baião, célula a célula</h2>
+        <p class="body">
+          Baião é o município piloto: tipologia T4 do ICNF, o pior escalão, com
+          muitas ocorrências e muita área ardida. São 210 998 células de 29
+          metros, cada uma com a sua posição na ordem e a justificação por
+          escrito.
+        </p>
+        <a class="btn" href="/mapa.html">Abrir o mapa</a>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        Dados do ICNF, da Direção-Geral do Território, do Copernicus Sentinel-2,
+        da Proteção Civil, do OpenStreetMap e do plano municipal de defesa da
+        floresta de Baião. Imagem de satélite © Esri.
+      </p>
+      <p>
+        <a class="github" href="https://github.com/COU7INHO/wildfire-prevention">
+          <svg width="17" height="17" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
+              0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01
+              1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95
+              0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.42 7.42 0 0 1 2-.27c.68 0
+              1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0
+              3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01
+              8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+          </svg>
+          Código e metodologia
+        </a>
+      </p>
+    </footer>
   </body>
 </html>

@@ -11,7 +11,7 @@ MUN ?= Baião
 PY  := uv run python
 
 .PHONY: help setup dados grelha acessos sentinel arquivo arquivo-paciente secura \
-        tempos modelo afinar mapas comparar exportar app build parar \
+        tempos modelo afinar mapas comparar exportar heroi secura-imagens secura-anim app build parar \
         atualizar retreinar cron nginx estado limpar
 
 help:
@@ -40,6 +40,9 @@ help:
 	@echo ""
 	@echo "  PRODUÇÃO"
 	@echo "    make exportar     gera os GeoJSON que a aplicação lê"
+	@echo "    make heroi        imagem de fundo da landing (satélite do concelho)"
+	@echo "    make secura-imagens  uma imagem por mês de secura, prontas para animar"
+	@echo "    make secura-anim     anima os meses: MP4 na landing, GIF no Desktop"
 	@echo "    make atualizar    refresca ignições + fogos + secura + exporta"
 	@echo "    make retreinar    re-treina o modelo e exporta (após época de fogos)"
 	@echo ""
@@ -106,6 +109,20 @@ comparar:
 exportar:
 	$(PY) -m wildfire_prevention.export_web $(MUN)
 
+# imagem de fundo da landing, a partir dos tiles de satélite do próprio concelho
+heroi:
+	$(PY) -m wildfire_prevention.landing_hero $(MUN)
+
+# uma imagem por mês de secura, com escala partilhada, prontas para animar
+# (OUT=/outro/sitio para não usar o Desktop)
+OUT ?= $(HOME)/Desktop
+secura-imagens:
+	$(PY) -m wildfire_prevention.seca_frames $(MUN) "$(OUT)"
+
+# anima os meses: MP4 + poster para a landing, GIF para partilhar
+secura-anim:
+	$(PY) -m wildfire_prevention.seca_anim $(MUN) "$(OUT)"
+
 atualizar:
 	$(PY) -m wildfire_prevention.atualizar $(MUN)
 
@@ -158,7 +175,8 @@ nginx:
 	@echo ""
 	@echo "    root $(PWD)/webapp/dist;"
 	@echo "    index index.html;"
-	@echo "    location / { try_files \$$uri \$$uri/ /index.html; }"
+	@echo "    # \$$uri.html serves /mapa as well as /mapa.html"
+	@echo "    location / { try_files \$$uri \$$uri.html \$$uri/ /index.html; }"
 	@echo ""
 	@echo "    # dados atualizados pelo cron, fora do build"
 	@echo "    location /data/ {"

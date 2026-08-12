@@ -1,0 +1,257 @@
+/* Landing page. Deliberately no framework and no JavaScript: this page exists to
+   be read in fifteen seconds, and anything that delays the first paint works
+   against that. */
+
+:root {
+  --bg: #0f1720;
+  --panel: #16212e;
+  --panel-2: #1e2c3c;
+  --text: #e8eef4;
+  --muted: #9fb0c0;
+  --accent: #e8710a;
+  --border: #2a3a4d;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; overflow-x: clip; }
+body {
+  margin: 0; background: var(--bg); color: var(--text); line-height: 1.6;
+  overflow-x: hidden;   /* the scan backdrop bleeds to the viewport edge */
+}
+
+/* ------------------------------------------------------------------- hero */
+.hero {
+  position: relative;
+  min-height: 100svh;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 80px 24px 96px;
+  overflow: hidden;
+}
+
+/* The still image is the base layer. A video, when there is one, is layered
+   over it without replacing it, so the page always has something to show. */
+.hero-media {
+  position: absolute; inset: 0;
+  background: #0b1219 url("/hero.jpg") center / cover no-repeat;
+}
+
+/* White text over a photograph is unreadable without this. */
+.hero-veil {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(100deg, rgba(9, 14, 20, 0.92) 0%, rgba(9, 14, 20, 0.60) 48%, rgba(9, 14, 20, 0.12) 100%),
+    linear-gradient(to bottom, rgba(9, 14, 20, 0.30) 0%, transparent 34%, rgba(15, 23, 32, 0.96) 100%);
+}
+
+.hero-content { position: relative; max-width: 660px; margin: 0 auto; width: 100%; }
+
+.eyebrow {
+  display: flex; align-items: center; gap: 10px;
+  margin: 0 0 22px;
+  font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--muted);
+}
+
+.hero h1 {
+  margin: 0 0 20px;
+  font-size: clamp(40px, 9vw, 76px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+
+.lead {
+  margin: 0 0 34px;
+  font-size: clamp(16px, 2.2vw, 19px);
+  color: #c9d6e2;
+  max-width: 54ch;
+}
+
+.cta { display: flex; flex-wrap: wrap; gap: 12px; }
+
+.btn {
+  display: inline-block; padding: 14px 26px;
+  background: var(--accent); color: #fff;
+  border-radius: 8px; text-decoration: none;
+  font-size: 15px; font-weight: 650;
+}
+.btn:hover { filter: brightness(1.12); }
+.btn.secondary {
+  background: rgba(255, 255, 255, 0.07); color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+.btn.secondary:hover { background: rgba(255, 255, 255, 0.14); filter: none; }
+
+/* The mockup has a transparent background, so it sits straight on the page.
+   Pulling it up overlaps the bottom of the hero, which reads as the product
+   emerging from the landscape rather than as a picture parked in a box. */
+.product {
+  margin: -90px auto 0; padding: 0 24px;
+  max-width: 900px; text-align: center; position: relative; z-index: 1;
+}
+.product img {
+  display: block; width: 100%; height: auto;
+  filter: drop-shadow(0 30px 60px rgba(0, 0, 0, 0.55));
+}
+.product p {
+  margin: 26px 0 0; color: var(--muted); font-size: 14.5px;
+}
+
+/* ---------------------------------------------------------------- sections */
+.band { padding: 84px 24px; max-width: 1080px; margin: 0 auto; }
+.band.alt { background: var(--panel); max-width: none; }
+.band.alt > * { max-width: 1080px; margin-left: auto; margin-right: auto; }
+
+.band h2 {
+  font-size: clamp(24px, 3.6vw, 34px);
+  line-height: 1.2; letter-spacing: -0.02em;
+  margin: 0 0 40px; max-width: 22ch;
+}
+
+.cards {
+  display: grid; gap: 28px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+.cards h3 { font-size: 17px; margin: 0 0 10px; }
+.cards p { margin: 0; color: var(--muted); font-size: 15px; }
+.cards em { color: var(--text); font-style: italic; }
+
+/* The three factors are multiplied, not listed. The "x" between the cards says
+   that in one character: drop any of the three and the result is zero. */
+.formula {
+  display: grid; align-items: stretch; gap: 14px;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+}
+.factor {
+  background: var(--bg); border: 1px solid var(--border);
+  border-top: 2px solid var(--accent);
+  border-radius: 12px; padding: 22px 20px 24px;
+}
+.factor-icon { display: block; color: var(--accent); margin-bottom: 14px; }
+.factor-icon svg { width: 26px; height: 26px; display: block; }
+.factor h3 { font-size: 16.5px; margin: 0 0 9px; }
+.factor p { margin: 0; color: var(--muted); font-size: 14.5px; }
+
+.formula-op {
+  display: grid; place-items: center;
+  color: var(--muted); font-size: 22px; font-weight: 300;
+}
+
+
+@media (max-width: 860px) {
+  .formula { grid-template-columns: 1fr; gap: 10px; }
+  .formula-op { padding: 2px 0; }
+}
+
+/* A satellite pass, drawn rather than filmed. Stock footage of a satellite
+   orbiting could belong to any product; this sweeps the actual terrain the tool
+   measures, costs no download, and cannot fail to play.
+
+   It lives BEHIND the text, bleeding off the right edge and dissolving into the
+   page, so it reads as atmosphere instead of a picture parked in a frame. */
+.refresh { position: relative; }
+.refresh > h2, .refresh > .body { position: relative; z-index: 1; }
+.refresh > h2 { max-width: 14ch; }
+.refresh > .body { max-width: 46ch; }
+.small { color: var(--muted); font-size: 14px; margin-bottom: 0; }
+
+.scan-scene {
+  position: absolute; z-index: 0;
+  /* Stays inside its own section. Overflowing above and below would paint over
+     the neighbouring bands, which use a different background, and the veil
+     would then fade to a colour that is not there: two visible seams. */
+  top: 0; bottom: 0;
+  left: 42%; right: calc(50% - 50vw);   /* reaches the viewport's right edge */
+  overflow: hidden;
+  background: #0b1219 url("/hero.jpg") center / cover no-repeat;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 55%);
+  mask-image: linear-gradient(to right, transparent, #000 55%);
+}
+
+/* dissolves the top and bottom into the page, so it has no visible edges */
+.scan-veil {
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom,
+    var(--bg) 0%, rgba(15, 23, 32, 0.30) 30%,
+    rgba(15, 23, 32, 0.30) 70%, var(--bg) 100%);
+}
+
+/* the beam: a soft trail with the bright scan line at its leading edge */
+.scan-beam {
+  position: absolute; left: 0; right: 0; height: 26%; top: -30%;
+  background: linear-gradient(to bottom, transparent, rgba(232, 113, 10, 0.22));
+  animation: sweep 6s linear infinite;
+}
+.scan-beam::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent) 22%, #ffd9a8 50%, var(--accent) 78%, transparent);
+  box-shadow: 0 0 22px 4px rgba(232, 113, 10, 0.55);
+}
+
+/* faint sensor grid, so it reads as measurement and not as decoration */
+.scan-grid {
+  position: absolute; inset: 0; opacity: 0.12;
+  background-image:
+    linear-gradient(rgba(232, 238, 244, 0.55) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(232, 238, 244, 0.55) 1px, transparent 1px);
+  background-size: 46px 46px;
+}
+
+@keyframes sweep {
+  from { top: -30%; }
+  to { top: 100%; }
+}
+
+.body { max-width: 62ch; color: var(--muted); font-size: 16px; margin: 0 0 28px; }
+.aside-note {
+  margin: 40px 0 0; padding-left: 18px;
+  border-left: 2px solid var(--border);
+  color: var(--muted); font-size: 15px; max-width: 60ch;
+}
+
+/* The section that admits the limits earns more trust than any superlative,
+   so it is styled to be read, not skipped. */
+.limits { list-style: none; margin: 0; padding: 0; max-width: 72ch; }
+.limits li {
+  padding: 18px 0; border-top: 1px solid var(--border);
+  color: var(--muted); font-size: 15px;
+}
+.limits strong { color: var(--text); font-weight: 650; }
+
+.closing { text-align: center; padding-bottom: 96px; }
+.closing h2 { margin-left: auto; margin-right: auto; max-width: none; }
+.closing .body { margin-left: auto; margin-right: auto; }
+
+footer {
+  border-top: 1px solid var(--border);
+  padding: 34px 24px 44px;
+  color: var(--muted); font-size: 13px; text-align: center;
+}
+footer p { max-width: 68ch; margin: 0 auto 10px; }
+footer a { color: var(--accent); text-decoration: none; }
+footer a:hover { text-decoration: underline; }
+.github {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 16px; border-radius: 8px;
+  border: 1px solid var(--border); color: var(--text) !important;
+}
+.github:hover { border-color: var(--accent); text-decoration: none !important; }
+
+@media (max-width: 760px) {
+  .scan-scene { left: 0; opacity: 0.42; -webkit-mask-image: none; mask-image: none; }
+  .refresh > h2, .refresh > .body { max-width: none; }
+}
+
+@media (max-width: 700px) {
+  .hero { padding: 64px 20px 80px; }
+  .band { padding: 60px 20px; }
+  .band h2 { margin-bottom: 30px; }
+}
+
+/* Motion causes real discomfort for some people. Honour the setting: the beam
+   stops at rest over the terrain instead of sweeping. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .scan-beam { animation: none; top: 42%; }
+}
