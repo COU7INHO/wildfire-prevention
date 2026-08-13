@@ -12,6 +12,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         landing: resolve(__dirname, "index.html"),
+        en: resolve(__dirname, "en.html"),
         mapa: resolve(__dirname, "mapa.html"),
       },
     },

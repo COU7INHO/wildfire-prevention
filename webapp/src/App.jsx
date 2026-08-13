@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { priorityLevel, explain } from "./explain.js";
+import { t, num, isEN, fuelLabel, otherLang } from "./i18n.js";
 
 // cache-buster: data files change between model runs; force the browser to refetch
 const BUST = `?t=${Date.now()}`;
@@ -107,10 +108,10 @@ const VIEWS = {
 const OVERLAYS = ["ovl-estradas", "ovl-agua-fill", "ovl-agua-line", "ovl-agua-pt", "ovl-casas"];
 
 function drynessLabel(i) {
-  if (i >= 75) return "Muito seco";
-  if (i >= 50) return "Seco";
-  if (i >= 30) return "Moderado";
-  return "Húmido";
+  if (i >= 75) return t("Muito seco");
+  if (i >= 50) return t("Seco");
+  if (i >= 30) return t("Moderado");
+  return t("Húmido");
 }
 function drynessColor(i) {
   if (i >= 75) return "#b3261e";
@@ -454,7 +455,7 @@ export default function App() {
   return (
     <div className={`app${drawer ? " drawer-open" : ""}${selected ? " detail-open" : ""}`}>
       <button className="drawer-btn" onClick={toggleDrawer} aria-expanded={drawer}
-              aria-label={drawer ? "Fechar menu" : "Abrir menu"}>
+              aria-label={drawer ? t("Fechar menu") : t("Abrir menu")}>
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"
              stroke="currentColor" strokeWidth="2" strokeLinecap="round">
           {drawer ? <path d="M4 4l12 12M16 4L4 16" /> : <path d="M3 5h14M3 10h14M3 15h14" />}
@@ -466,56 +467,59 @@ export default function App() {
         <div className="brand">
           {/* a real link, not history.back(): it always lands on the same page,
               and the browser shows its destination on hover */}
-          <a className="home-link" href="/">
+          <a className="home-link" href={isEN ? "/en.html" : "/"}>
             <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.9"
                  strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M12 7H2M6 3L2 7l4 4" />
             </svg>
-            Página inicial
+            {t("Página inicial")}
           </a>
-          <span className="brand-eyebrow">Município de Baião</span>
-          <h1>Prevenção de Incêndio Rural</h1>
+          <nav className="lang" aria-label={isEN ? "Language" : "Idioma"}>
+            <a href={`?lang=pt`} aria-current={isEN ? undefined : "page"}>PT</a>
+            <span aria-hidden="true">|</span>
+            <a href={`?lang=en`} aria-current={isEN ? "page" : undefined}>EN</a>
+          </nav>
+          <span className="brand-eyebrow">{t("Município de Baião")}</span>
+          <h1>{t("Prevenção de Incêndio Rural")}</h1>
           <p>
-            Apoio à decisão na gestão de combustível: onde intervir primeiro,
-            a partir do terreno, da vegetação, do histórico de incêndios e da
-            exposição de habitações.
+            {t("Apoio à decisão na gestão de combustível: onde intervir primeiro, a partir do terreno, da vegetação, do histórico de incêndios e da exposição de habitações.")}
           </p>
         </div>
 
         <div className="sidebar-scroll">
         <div className="section">
-          <h2>Ver no mapa</h2>
+          <h2>{t("Ver no mapa")}</h2>
           <div className="toggle">
             <button className={view === "priority" ? "on" : ""} onClick={() => setView("priority")}>
-              Onde atuar
+              {t("Onde atuar")}
             </button>
             <button className={view === "susceptibility" ? "on" : ""} onClick={() => setView("susceptibility")}>
-              Onde arde
+              {t("Onde arde")}
             </button>
             <button className={view === "fuel" ? "on" : ""} onClick={() => setView("fuel")}>
-              Vegetação
+              {t("Vegetação")}
             </button>
             <button className={view === "secura" ? "on" : ""} onClick={() => setView("secura")}>
-              Secura
+              {t("Secura")}
             </button>
             <button className={view === "oficial" ? "on" : ""} onClick={() => setView("oficial")}>
-              Plano 2021
+              {t("Plano 2021")}
             </button>
           </div>
           <p className="hint">
-            {view === "priority" && "Risco, valor exposto e dificuldade de combate: onde a prevenção protege mais."}
-            {view === "susceptibility" && "Propensão estrutural: onde arde de forma recorrente, ao longo dos anos."}
-            {view === "fuel" && "Tipo de vegetação e uso do solo (COS 2023)."}
-            {view === "secura" && "Estado atual da vegetação medido por satélite, apenas sobre coberto vegetal. Descritivo, não é previsão."}
-            {view === "oficial" && "Comparação lado a lado: model atualizado (esquerda) e cartografia oficial do PMDFCI 2021-2030 (direita)."}
+            {view === "priority" && t("Risco, valor exposto e dificuldade de combate: onde a prevenção protege mais.")}
+            {view === "susceptibility" && t("Propensão estrutural: onde arde de forma recorrente, ao longo dos anos.")}
+            {view === "fuel" && t("Tipo de vegetação e uso do solo (COS 2023).")}
+            {view === "secura" && t("Estado atual da vegetação medido por satélite, apenas sobre coberto vegetal. Descritivo, não é previsão.")}
+            {view === "oficial" && t("Comparação lado a lado: model atualizado (esquerda) e cartografia oficial do PMDFCI 2021-2030 (direita).")}
           </p>
 
           {view === "oficial" && comparison && (
             <>
               <div className="fire-year">
-                <label>Sobrepor os incêndios reais de:</label>
+                <label>{t("Sobrepor os incêndios reais de:")}</label>
                 <select value={anoComp} onChange={(e) => setAnoComp(e.target.value)}>
-                  <option value="">Nenhum ano</option>
+                  <option value="">{t("Nenhum ano")}</option>
                   {comparison.anos.map((a) => (
                     <option key={a.ano} value={a.ano}>{a.ano}</option>
                   ))}
@@ -536,9 +540,9 @@ export default function App() {
 
           {view === "susceptibility" && (
             <div className="fire-year">
-              <label>Sobrepor área ardida real (ICNF):</label>
+              <label>{t("Sobrepor área ardida real (ICNF):")}</label>
               <select value={fireYear} onChange={(e) => setFireYear(e.target.value)}>
-                <option value="">Nenhum ano</option>
+                <option value="">{t("Nenhum ano")}</option>
                 {Array.from({ length: 17 }, (_, i) => 2025 - i)
                   .filter((y) => y !== 2010)
                   .map((y) => (
@@ -580,7 +584,7 @@ export default function App() {
                       {cur?.pct_acima_normal ?? "—"}<span>%</span>
                     </div>
                     <div className="gauge-label">
-                      do concelho <strong>mais seco que o normal</strong> para {cur?.mes}<br />
+                      {t("do concelho")} <strong>{t("mais seco que o normal")}</strong> para {cur?.mes}<br />
                       comparado com os mesmos meses de 2015-2025
                     </div>
                   </div>
@@ -630,7 +634,7 @@ export default function App() {
           {view === "priority" && (
             <div className="slider-row">
               <label>
-                Zonas em alert: <strong>top {alert}%</strong> do concelho
+                {t("Zonas em alerta:")} <strong>top {alert}%</strong> {t("do concelho")}
               </label>
               <input
                 type="range" min="2" max="15" step="1" value={alert}
@@ -643,10 +647,10 @@ export default function App() {
             {/* the dot carries the layer's colour on the map — identification,
                 not decoration */}
             {[
-              ["buildings", "Edifícios", "#ffd54f"],
-              ["roads", "Estradas e caminhos", "#f5f5f5"],
-              ["water", "Pontos de água", "#0277bd"],
-              ["ignitions", "Ignições de 2026", "#ff6d00"],
+              ["buildings", t("Edifícios"), "#ffd54f"],
+              ["roads", t("Estradas e caminhos"), "#f5f5f5"],
+              ["water", t("Pontos de água"), "#0277bd"],
+              ["ignitions", isEN ? "2026 ignitions" : "Ignições de 2026", "#ff6d00"],
             ].map(([key, label, color]) => (
               <label key={key} className="layer-check">
                 <input
@@ -663,11 +667,11 @@ export default function App() {
 
         <div className="section">
           <h2>
-            {view === "priority" && "Prioridade de intervenção"}
-            {view === "susceptibility" && "Propensão estrutural"}
-            {view === "fuel" && "Ocupação do solo"}
+            {view === "priority" && t("Prioridade de intervenção")}
+            {view === "susceptibility" && t("Propensão estrutural")}
+            {view === "fuel" && t("Ocupação do solo")}
             {view === "secura" && (drynessMode === "anomaly" ? "Secura vs. o normal" : "Secura da vegetação")}
-            {view === "oficial" && "Escala nos dois mapas"}
+            {view === "oficial" && t("Escala nos dois mapas")}
           </h2>
           {(view === "priority"
             ? [
@@ -716,22 +720,22 @@ export default function App() {
           ).map(([label, color]) => (
             <div className="legend-row" key={label}>
               <span className="swatch" style={{ background: color }} />
-              {label}
+              {fuelLabel(t(label))}
             </div>
           ))}
         </div>
 
         <div className="section">
           <button className="method-btn" onClick={() => setShowMethod(true)}>
-            Metodologia
-            <span>Como é calculado o risco e a prioridade</span>
+            {t("Metodologia")}
+            <span>{t("Como é calculado o risco e a prioridade")}</span>
           </button>
         </div>
 
         {sources.length > 0 && (
           <div className="section">
             <details className="sources">
-              <summary>Fontes de dados</summary>
+              <summary>{t("Fontes de dados")}</summary>
               <ul>
                 {sources.map((f) => (
                   <li key={f.o_que}>
@@ -761,11 +765,11 @@ export default function App() {
       <div className={`map${view === "oficial" ? " split" : ""}`}>
         <div className="pane">
           <div className="mapcanvas" ref={containerRef} />
-          {view === "oficial" && <span className="pane-label">Modelo atualizado</span>}
+          {view === "oficial" && <span className="pane-label">{t("Modelo atualizado")}</span>}
         </div>
         <div className="pane pane2">
           <div className="mapcanvas" ref={container2Ref} />
-          <span className="pane-label">Plano oficial 2021</span>
+          <span className="pane-label">{t("Plano oficial 2021")}</span>
         </div>
         {selected && <Detail props={selected} alert={alert} onClose={() => setSelected(null)} />}
         {showMethod && (
@@ -782,26 +786,26 @@ function MethodWindow({ model, comparison, onClose }) {
   return (
     <div className="modal-scrim" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-x" onClick={onClose} aria-label="Fechar">×</button>
-        <h2>Metodologia</h2>
+        <button className="modal-x" onClick={onClose} aria-label={t("Fechar")}>×</button>
+        <h2>{t("Metodologia")}</h2>
 
-        <h3>A que perguntas responde</h3>
+        <h3>{t("A que perguntas responde")}</h3>
         <ul className="modal-questions">
-          <li><strong>Onde intervir primeiro?</strong> Ordena o território pelo
+          <li><strong>{t("Onde intervir primeiro?")}</strong> Ordena o território pelo
               efeito esperado da gestão de combustível, combinando a propensão
               para arder com o que está exposto e com a dificuldade de combate.</li>
-          <li><strong>Que zones ardem de forma recorrente?</strong> Estima, para
+          <li><strong>{t("Que zonas ardem de forma recorrente?")}</strong> Estima, para
               cada quadrícula, a tendência estrutural para ser percorrida pelo
               fogo ao longo dos anos.</li>
-          <li><strong>Como está a vegetação agora?</strong> Mede o vigor e a
+          <li><strong>{t("Como está a vegetação agora?")}</strong> Mede o vigor e a
               humidade por satélite, e compara-os com o mesmo mês em anos
               anteriores.</li>
-          <li><strong>Isto confirma o plano municipal?</strong> Confronta a
+          <li><strong>{t("Isto confirma o plano municipal?")}</strong> Confronta a
               estimativa com a cartografia oficial do PMDFCI e com os incêndios
               que ocorreram depois do plano.</li>
         </ul>
 
-        <h3>O que se estima como risco</h3>
+        <h3>{t("O que se estima como risco")}</h3>
         <p>
           Para cada quadrícula, a propensão estrutural para arder: a tendência
           de um lugar para ser percorrido pelo fogo ao longo dos anos. Não é
@@ -817,11 +821,11 @@ function MethodWindow({ model, comparison, onClose }) {
                 <ul>{g.itens.map((i) => <li key={i}>{i}</li>)}</ul>
               </div>
             ))}
-            <h3>Duas camadas, variáveis diferentes</h3>
+            <h3>{t("Duas camadas, variáveis diferentes")}</h3>
             <p>
               {model.excluidas?.length > 0 && (
                 <>
-                  {model.excluidas.join(" e ")} <strong>são usadas</strong>,
+                  {model.excluidas.join(" e ")} <strong>{t("são usadas")}</strong>,
                   mas não no cálculo do risco. Entram na camada seguinte:
                 </>
               )}
@@ -829,15 +833,15 @@ function MethodWindow({ model, comparison, onClose }) {
             <table className="modal-layers">
               <tbody>
                 <tr>
-                  <th>Risco de arder</th>
+                  <th>{t("Risco de arder")}</th>
                   <td>terreno, vegetação, presença humana e histórico de fogo
                       (as {model.n_variaveis} variáveis acima)</td>
                 </tr>
                 <tr>
-                  <th>Prioridade de intervenção</th>
+                  <th>{t("Prioridade de intervenção")}</th>
                   <td>risco × exposição (habitações próximas) ×{" "}
-                      <strong>dificuldade de combate</strong> (distância a pontos
-                      de água e a roads, e tempo de viagem dos bombeiros
+                      <strong>{t("dificuldade de combate")}</strong> (distância a pontos
+                      de água e a estradas, e tempo de viagem dos bombeiros
                       calculado pela rede viária real)</td>
                 </tr>
               </tbody>
@@ -850,13 +854,13 @@ function MethodWindow({ model, comparison, onClose }) {
               fogo é travado, e é aí que pesam.
             </p>
 
-            <h3>Como foi treinado</h3>
+            <h3>{t("Como foi treinado")}</h3>
             <p>
               Com o histórico do concelho entre {model.anos?.[0]} e {model.anos?.[1]}:
               cada uma das {model.n_celulas?.toLocaleString("pt-PT")} quadrículas
               observada em cada ano, num total de{" "}
               {model.n_linhas?.toLocaleString("pt-PT")} observações.
-              Para cada ano, o cálculo usa apenas informação <strong>anterior</strong>,
+              Para cada ano, o cálculo usa apenas informação <strong>{t("anterior")}</strong>,
               ou seja a vegetação e o histórico do ano precedente, de modo a que
               nunca esteja a olhar para o resultado que tenta estimar.
             </p>
@@ -864,9 +868,9 @@ function MethodWindow({ model, comparison, onClose }) {
               Modelo em produção treinado a{" "}
               {model.treinado_em?.split("-").reverse().join("/")}, com registo
               dos parâmetros e dos dados usados, para que qualquer mapa publicado
-              seja rastreável ao model que o produziu.
+              seja rastreável ao modelo que o produziu.
               <br /><br />
-              <strong>Projeto em desenvolvimento.</strong> O model é
+              <strong>{t("Projeto em desenvolvimento.")}</strong> O modelo é
               reprocessado quando se verificam alterações relevantes nos dados
               de entrada: publicação de nova área ardida pelo ICNF, nova versão da
               carta de ocupação do solo, ou revisão das variáveis. A
@@ -876,9 +880,9 @@ function MethodWindow({ model, comparison, onClose }) {
           </>
         )}
 
-        <h3>Como foi verificado</h3>
+        <h3>{t("Como foi verificado")}</h3>
         <p>
-          Testou-se a estimar anos que o model nunca tinha visto, e também
+          Testou-se a estimar anos que o modelo nunca tinha visto, e também
           metade do concelho que nunca tinha visto, para confirmar que reconhece
           padrões em vez de memorizar lugares.
           {inc && (
@@ -889,13 +893,13 @@ function MethodWindow({ model, comparison, onClose }) {
           )}
         </p>
 
-        <h3>O que isto não faz</h3>
+        <h3>{t("O que isto não faz")}</h3>
         <ul className="modal-limits">
           <li>Não prevê onde vai arder num dia concreto. Para isso seria preciso
               vento, temperatura e humidade do momento.</li>
-          <li>Não sabe onde os bombeiros travaram fires que teriam alastrado:
+          <li>Não sabe onde os bombeiros travaram incêndios que teriam alastrado:
               os dados mostram o que ardeu, não o que foi evitado.</li>
-          <li>A ocupação do solo é de 2023, anterior aos incêndios de 2024.</li>
+          <li>{t("A ocupação do solo é de 2023, anterior aos incêndios de 2024.")}</li>
           <li>A resolução é de cerca de 29 metros: não distingue detalhes mais
               finos, como a limpeza de uma berma.</li>
           <li>O tempo indicado para os bombeiros é de viagem pela estrada, desde
@@ -913,11 +917,11 @@ function ComparisonTable({ dados, anoAtivo }) {
   return (
     <div className="comp">
       <div className="comp-head">
-        Quem previu melhor os incêndios <strong>depois</strong> do plano?
+        Quem previu melhor os incêndios <strong>{t("depois")}</strong> do plano?
       </div>
       <table className="comp-table">
         <thead>
-          <tr><th>Ano</th><th>Ardeu</th><th>Modelo</th><th>Plano</th></tr>
+          <tr><th>{t("Ano")}</th><th>{t("Ardeu")}</th><th>{t("Modelo")}</th><th>{t("Plano")}</th></tr>
         </thead>
         <tbody>
           {anos.map((a) => {
@@ -932,7 +936,7 @@ function ComparisonTable({ dados, anoAtivo }) {
             );
           })}
           <tr className="total">
-            <td colSpan={2}>Média</td>
+            <td colSpan={2}>{t("Média")}</td>
             <td className={m.nosso > m.plano ? "win" : ""}>{m.nosso.toFixed(3)}</td>
             <td className={m.plano > m.nosso ? "win" : ""}>{m.plano.toFixed(3)}</td>
           </tr>
@@ -941,14 +945,14 @@ function ComparisonTable({ dados, anoAtivo }) {
       <p className="comp-note">
         Quanto mais alto o valor, mais vezes acertou onde viria a arder.
         {inc && !inc.significativo && (
-          <> Os dois <strong>acertam de forma semelhante</strong>: a diferença
+          <> {t("Os dois")} <strong>{t("acertam de forma semelhante")}</strong>: a diferença
           entre eles cabe dentro da margem de erro.</>
         )}
         {inc && inc.significativo && (
           <> A <strong>{inc.dif_media > 0 ? "cartografia oficial" : "modelo"}</strong> acerta
           mais vezes, de forma consistente.</>
         )}{" "}
-        A diferença está noutro lado: o model é recalculado todos os anos,
+        A diferença está noutro lado: o modelo é recalculado todos os anos,
         enquanto a cartografia oficial se mantém fixa até 2030.
 
         <span className="info" tabIndex={0}>
@@ -964,7 +968,7 @@ function ComparisonTable({ dados, anoAtivo }) {
                 Diferença de {inc.dif_media > 0 ? "+" : ""}{inc.dif_media.toFixed(3)},
                 intervalo de confiança a 95% [{inc.ic95[0].toFixed(3)}, {inc.ic95[1].toFixed(3)}],
                 obtido por bootstrap sobre blocos espaciais
-                {!inc.significativo && ", que atravessa o zero, pelo que a diferença não é significativa"}.
+                {!inc.significativo && t(", que atravessa o zero, pelo que a diferença não é significativa")}.
               </>
             )}
           </span>
@@ -1002,7 +1006,7 @@ function DrynessChart({ series, active }) {
           </g>
         ))}
       </svg>
-      <div className="chart-cap">Evolução da secura (0 = húmido, 100 = muito seco)</div>
+      <div className="chart-cap">{t("Evolução da secura (0 = húmido, 100 = muito seco)")}</div>
     </div>
   );
 }
@@ -1014,18 +1018,18 @@ function Detail({ props, alert, onClose }) {
     <div className="detail">
       <button className="close" onClick={onClose}>×</button>
       <span className="badge" style={{ background: lvl.color }}>Prioridade {lvl.label}</span>
-      <h3>Porque prevenir aqui?</h3>
+      <h3>{t("Porque prevenir aqui?")}</h3>
       <ul>
         {reasons.map((r, i) => <li key={i}>{r}</li>)}
       </ul>
       <div className="factgrid">
-        <div className="fact"><span>Vegetação</span><strong>{props.fuel}</strong></div>
-        <div className="fact"><span>Ardeu (2009-25)</span><strong>{props.vezes_ardeu != null ? `${props.vezes_ardeu}×` : "—"}</strong></div>
-        <div className="fact"><span>Inclinação</span><strong>{props.slope}°</strong></div>
-        <div className="fact"><span>Casas (250 m)</span><strong>{props.houses_250m ?? "—"}</strong></div>
-        <div className="fact"><span>Água a</span><strong>{props.agua_m != null ? `${props.agua_m} m` : "—"}</strong></div>
-        <div className="fact"><span>Estrada a</span><strong>{props.estrada_m != null ? `${props.estrada_m} m` : "—"}</strong></div>
-        <div className="fact"><span>Bombeiros a</span><strong>{props.bombeiros_min != null ? `${props.bombeiros_min} min` : "—"}</strong></div>
+        <div className="fact"><span>{t("Vegetação")}</span><strong>{props.fuel}</strong></div>
+        <div className="fact"><span>{t("Ardeu (2009-25)")}</span><strong>{props.vezes_ardeu != null ? `${props.vezes_ardeu}×` : "—"}</strong></div>
+        <div className="fact"><span>{t("Inclinação")}</span><strong>{props.slope}°</strong></div>
+        <div className="fact"><span>{t("Casas (250 m)")}</span><strong>{props.houses_250m ?? "—"}</strong></div>
+        <div className="fact"><span>{t("Água a")}</span><strong>{props.agua_m != null ? `${props.agua_m} m` : "—"}</strong></div>
+        <div className="fact"><span>{t("Estrada a")}</span><strong>{props.estrada_m != null ? `${props.estrada_m} m` : "—"}</strong></div>
+        <div className="fact"><span>{t("Bombeiros a")}</span><strong>{props.bombeiros_min != null ? `${props.bombeiros_min} min` : "—"}</strong></div>
       </div>
     </div>
   );

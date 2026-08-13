@@ -41,6 +41,16 @@ body { background: var(--bg); color: var(--text); }
 }
 .home-link svg { width: 13px; height: 13px; flex-shrink: 0; }
 .home-link:hover { color: var(--text); border-color: var(--accent); }
+
+.brand .lang {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin: 0 0 15px 10px;
+  font-size: 12px; font-weight: 650; letter-spacing: 0.04em;
+  color: rgba(232, 238, 244, 0.28);
+}
+.brand .lang a { color: var(--muted); text-decoration: none; padding: 4px 2px; }
+.brand .lang a:hover { color: var(--text); }
+.brand .lang a[aria-current="page"] { color: var(--accent); }
 .brand-eyebrow {
   display: block; font-size: 10.5px; letter-spacing: 0.12em;
   text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
