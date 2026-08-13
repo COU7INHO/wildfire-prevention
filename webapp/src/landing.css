@@ -177,16 +177,38 @@ body {
     rgba(15, 23, 32, 0.30) 70%, var(--bg) 100%);
 }
 
-/* the beam: a soft trail with the bright scan line at its leading edge */
-.scan-beam {
-  position: absolute; left: 0; right: 0; height: 26%; top: -30%;
-  background: linear-gradient(to bottom, transparent, rgba(232, 113, 10, 0.22));
-  animation: sweep 6s linear infinite;
+/* A satellite crossing the scene every three seconds, trailing its sensor cone.
+   Drawn rather than filmed: an SVG plus two keyframes weighs nothing, always
+   plays, and stays sharp on any screen. */
+.satellite {
+  position: absolute; top: 0; left: 0; z-index: 2;
+  animation: satellite-pass 3.75s linear infinite;
 }
-.scan-beam::after {
-  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
-  background: linear-gradient(90deg, transparent, var(--accent) 22%, #ffd9a8 50%, var(--accent) 78%, transparent);
-  box-shadow: 0 0 22px 4px rgba(232, 113, 10, 0.55);
+.satellite img {
+  display: block; width: 106px; height: auto;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.6));
+}
+
+/* A swath, not a spotlight: it starts almost as wide as it ends, because the
+   instrument images a broad strip. It leaves the craft as narrow as the body
+   itself and opens out downward, so nothing spills above the satellite. Hung at
+   22% of the
+   width, which is where the spacecraft body sits in the photograph. */
+.satellite-beam {
+  position: absolute; left: 22%; top: 74%;
+  width: 300px; height: 300px; margin-left: -150px;
+  background: linear-gradient(to bottom, rgba(232, 113, 10, 0.30), rgba(232, 113, 10, 0));
+  clip-path: polygon(45.5% 0, 54.5% 0, 98% 100%, 2% 100%);
+}
+
+/* left/top, not transform: percentages in transform resolve against the
+   element's own box, so the satellite would travel its own width and stop. */
+@keyframes satellite-pass {
+  0%   { left: -14%; top: 0%;  opacity: 0; }
+  8%   { opacity: 1; }
+  68%  { opacity: 1; }
+  78%  { left: 106%; top: 62%; opacity: 0; }
+  100% { left: 106%; top: 62%; opacity: 0; }
 }
 
 /* faint sensor grid, so it reads as measurement and not as decoration */
@@ -196,11 +218,6 @@ body {
     linear-gradient(rgba(232, 238, 244, 0.55) 1px, transparent 1px),
     linear-gradient(90deg, rgba(232, 238, 244, 0.55) 1px, transparent 1px);
   background-size: 46px 46px;
-}
-
-@keyframes sweep {
-  from { top: -30%; }
-  to { top: 100%; }
 }
 
 .body { max-width: 62ch; color: var(--muted); font-size: 16px; margin: 0 0 28px; }
@@ -253,5 +270,6 @@ footer a:hover { text-decoration: underline; }
    stops at rest over the terrain instead of sweeping. */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .scan-beam { animation: none; top: 42%; }
+  /* the satellite parks mid-pass instead of crossing */
+  .satellite { animation: none; left: 34%; top: 22%; }
 }
