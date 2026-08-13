@@ -29,6 +29,18 @@ body { background: var(--bg); color: var(--text); }
 }
 
 .brand { padding: 20px 20px 18px; border-bottom: 1px solid var(--border); }
+
+/* Named, not just an arrow: a bare arrow reads as browser-back, and this goes
+   somewhere specific. */
+.home-link {
+  display: inline-flex; align-items: center; gap: 7px;
+  margin-bottom: 15px; padding: 5px 11px 5px 8px;
+  border: 1px solid var(--border); border-radius: 7px;
+  color: var(--muted); text-decoration: none;
+  font-size: 11.5px; font-weight: 600; letter-spacing: 0.01em;
+}
+.home-link svg { width: 13px; height: 13px; flex-shrink: 0; }
+.home-link:hover { color: var(--text); border-color: var(--accent); }
 .brand-eyebrow {
   display: block; font-size: 10.5px; letter-spacing: 0.12em;
   text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
@@ -293,7 +305,10 @@ body { background: var(--bg); color: var(--text); }
     background: rgba(8, 12, 18, 0.55);
   }
 
-  .brand { padding: 20px 18px 16px 64px; }   /* clears the button, which sits above */
+  /* Clear the close button by starting BELOW it, not beside it. Indenting the
+     whole block instead pushed the title and the description off the left edge
+     the rest of the drawer is aligned to. */
+  .brand { padding: 66px 18px 16px; }
   .section { padding: 16px 18px; }
 
   .drawer-btn {

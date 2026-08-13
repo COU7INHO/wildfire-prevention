@@ -464,6 +464,15 @@ export default function App() {
 
       <aside className="sidebar">
         <div className="brand">
+          {/* a real link, not history.back(): it always lands on the same page,
+              and the browser shows its destination on hover */}
+          <a className="home-link" href="/">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.9"
+                 strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 7H2M6 3L2 7l4 4" />
+            </svg>
+            Página inicial
+          </a>
           <span className="brand-eyebrow">Município de Baião</span>
           <h1>Prevenção de Incêndio Rural</h1>
           <p>
