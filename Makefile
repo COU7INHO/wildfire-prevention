@@ -11,7 +11,7 @@ MUN ?= Baião
 PY  := uv run python
 
 .PHONY: help setup data grid access sentinel archive archive-patient dryness \
-        travel-times model tune maps compare export hero dryness-images dryness-animation app build stop \
+        travel-times model tune maps compare export hero og dryness-images dryness-animation app build stop \
         refresh retrain cron nginx status clean
 
 help:
@@ -40,7 +40,8 @@ help:
 	@echo ""
 	@echo "  PRODUÇÃO"
 	@echo "    make export     gera os GeoJSON que a aplicação lê"
-	@echo "    make hero        imagem de fundo da landing (satélite do concelho)"
+	@echo "    make hero         imagem de fundo da landing (satélite do concelho)"
+	@echo "    make og           cartão 1200x630 para partilha do link"
 	@echo "    make dryness-images  uma imagem por mês de dryness, prontas para animar"
 	@echo "    make dryness-animation     anima os meses: MP4 na landing, GIF no Desktop"
 	@echo "    make refresh    refresca ignições + fogos + dryness + exporta"
@@ -112,6 +113,10 @@ export:
 # imagem de fundo da landing, a partir dos tiles de satélite do próprio concelho
 hero:
 	$(PY) -m wildfire_prevention.landing_hero $(MUN)
+
+# cartão 1200x630 mostrado quando o link é partilhado numa conversa ou timeline
+og:
+	$(PY) -c "from wildfire_prevention.landing_hero import social_card; social_card('$(MUN)')"
 
 # uma imagem por mês de dryness, com escala partilhada, prontas para animar
 # (OUT=/outro/sitio para não usar o Desktop)

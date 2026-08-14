@@ -23,7 +23,7 @@ from io import BytesIO
 from pathlib import Path
 
 import requests
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageDraw, ImageEnhance
 
 from .boundary import municipality_polygon
 
@@ -118,3 +118,48 @@ if __name__ == "__main__":
     import sys
 
     build(sys.argv[1] if len(sys.argv) > 1 else "Baião")
+
+
+# --------------------------------------------------------------- social card
+CARD = (1200, 630)   # what Facebook, LinkedIn, WhatsApp and X all expect
+
+
+def social_card(name: str = "Baião", out: Path | None = None) -> Path:
+    """The image shown when the link is pasted into a chat or a timeline.
+
+    Deliberately carries NO text: the title and description are supplied per
+    language by the meta tags, and a worded image would need one file per
+    language and would be truncated differently by every platform.
+
+    JPEG, not WebP: several crawlers still refuse WebP and fall back to nothing.
+    """
+    from PIL import ImageFilter
+
+    card = Image.new("RGB", CARD, (15, 23, 32))
+
+    # the same terrain as the landing, blurred back so it reads as texture
+    hero = mosaic(name)
+    mw, mh = hero.size
+    cw = int(mw * CROP_WIDTH)
+    ch = int(cw / (CARD[0] / CARD[1]))
+    left, top = int((mw - cw) * CROP_X), int((mh - ch) * CROP_Y)
+    terrain = hero.crop((left, top, left + cw, top + ch)).resize(CARD, Image.LANCZOS)
+    terrain = terrain.filter(ImageFilter.GaussianBlur(1.2))
+    card.paste(terrain, (0, 0))
+
+    veil = Image.new("RGBA", CARD, (0, 0, 0, 0))
+    for x in range(CARD[0]):
+        a = int(238 - 150 * (x / CARD[0]))          # dark left, clearer right
+        ImageDraw.Draw(veil).line([(x, 0), (x, CARD[1])], fill=(9, 14, 20, a))
+    card = Image.alpha_composite(card.convert("RGBA"), veil)
+
+    # the product itself, the same mockup the landing leads with
+    shot = Image.open(WEB_DIR / "screens-2200.webp").convert("RGBA")
+    w = 980
+    shot = shot.resize((w, round(shot.height * w / shot.width)), Image.LANCZOS)
+    card.alpha_composite(shot, ((CARD[0] - w) // 2, (CARD[1] - shot.height) // 2 + 10))
+
+    out = Path(out) if out else WEB_DIR / "og.jpg"
+    card.convert("RGB").save(out, "JPEG", quality=86, optimize=True, progressive=True)
+    print(f"{out}  {CARD[0]}x{CARD[1]}  {out.stat().st_size / 1024:.0f} KB")
+    return out
