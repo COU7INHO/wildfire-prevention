@@ -207,6 +207,27 @@ function addContextLayers(map) {
   });
 }
 
+// The priority layer is ~3.3 MB. Without a byte count the reader cannot tell a
+// slow connection from a broken one, and a dark map reads as broken.
+async function fetchWithProgress(url, onProgress) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const total = Number(res.headers.get("content-length")) || 0;
+  if (!total || !res.body) return res.json();          // no length: fall back
+
+  const reader = res.body.getReader();
+  const chunks = [];
+  let received = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    received += value.length;
+    onProgress(Math.min(1, received / total));
+  }
+  return JSON.parse(new TextDecoder().decode(await new Blob(chunks).arrayBuffer()));
+}
+
 function centroid(feature) {
   const ring = feature.geometry.coordinates[0];
   let x = 0, y = 0;
@@ -237,6 +258,7 @@ export default function App() {
   const map2Ref = useRef(null);       // right pane, only used in the "Plano 2021" view
   const container2Ref = useRef(null);
   const [selected, setSelected] = useState(null);
+  const [loadState, setLoadState] = useState({ status: "loading", pct: 0 });
   const [view, setView] = useState("priority");
   const [overlays, setOverlays] = useState({ buildings: false, roads: false, water: false, ignitions: false });
   const [alert, setAlert] = useState(5); // top X% of the municipality in red
@@ -264,7 +286,15 @@ export default function App() {
     mapRef.current = map;
 
     map.on("load", async () => {
-      const data = await fetch(DATA_URL).then((r) => r.json());
+      let data;
+      try {
+        data = await fetchWithProgress(DATA_URL, (pct) =>
+          setLoadState({ status: "loading", pct }));
+      } catch (err) {
+        setLoadState({ status: "error", pct: 0, detail: String(err.message || err) });
+        return;
+      }
+      setLoadState({ status: "ready", pct: 1 });
       fetch(`/data/baiao_comparison.json${BUST}`)
         .then((r) => (r.ok ? r.json() : null))
         .then(setComparison)
@@ -763,6 +793,27 @@ export default function App() {
       </aside>
 
       <div className={`map${view === "oficial" ? " split" : ""}`}>
+        {loadState.status !== "ready" && (
+          <div className="loading" role="status" aria-live="polite">
+            {loadState.status === "loading" ? (
+              <>
+                <div className="loading-bar">
+                  <span style={{ width: `${Math.round(loadState.pct * 100)}%` }} />
+                </div>
+                <strong>{t("A carregar o mapa")}</strong>
+                <span>
+                  {Math.round(loadState.pct * 100)}% {t("de 3,3 MB")}
+                </span>
+              </>
+            ) : (
+              <>
+                <strong>{t("Não foi possível carregar os dados")}</strong>
+                <span>{t("Verifique a ligação e tente de novo.")}</span>
+                <button onClick={() => location.reload()}>{t("Tentar de novo")}</button>
+              </>
+            )}
+          </div>
+        )}
         <div className="pane">
           <div className="mapcanvas" ref={containerRef} />
           {view === "oficial" && <span className="pane-label">{t("Modelo atualizado")}</span>}

@@ -117,6 +117,11 @@ const EN = {
   depois: "later",
 
   // ---- sources ----------------------------------------------------------
+  "A carregar o mapa": "Loading the map",
+  "de 3,3 MB": "of 3.3 MB",
+  "Não foi possível carregar os dados": "Could not load the data",
+  "Verifique a ligação e tente de novo.": "Check your connection and try again.",
+  "Tentar de novo": "Try again",
   "Fontes de dados": "Data sources",
   "Prevenção de Incêndio — Baião": "Rural Fire Prevention — Baião",
   o_que: "What",
