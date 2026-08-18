@@ -8,6 +8,12 @@
   Where fuel management protects the most, from open and official data, updated automatically.
 </p>
 
+<p align="center">
+  <a href="https://firebreak.tiago-coutinho.com"><strong>firebreak.tiago-coutinho.com</strong></a>
+  &nbsp;·&nbsp;
+  <a href="https://firebreak.tiago-coutinho.com/mapa">Open the map</a>
+</p>
+
 ---
 
 A decision-support tool for municipalities. It is not a fire-spread simulator,
@@ -35,7 +41,7 @@ Rebuilding everything from scratch takes hours and downloads ~10 GB of satellite
 imagery:
 
 ```bash
-make dados
+make data
 ```
 
 `make help` lists every target. Dependencies are managed with
@@ -106,64 +112,125 @@ the official map is **frozen until 2030**, while this model **retrains**.
 
 ### The model is an identifiable artifact
 
-`make retreinar` saves the model to `data/out/model_<municipality>.txt` and
+`make retrain` saves the model to `data/out/model_<municipality>.txt` and
 records, in a companion `.json`, **when it was trained, over which years, on how
-many rows, and with which variables**. The weekly update scores with that saved
-model rather than training a fresh one each time.
+many rows, with which variables, and how well it scored** — the holdout AUC from
+a temporal split, so a later model can be compared with the one it replaced.
+
+Three rules protect that artifact:
+
+| | |
+|---|---|
+| **The old model is kept** | superseded models move to `data/out/models/`, stamped with their training date. The last five stay. Rollback is a file copy. |
+| **A worse model is not promoted** | if the mean holdout AUC falls more than 0.01, the model in production is left untouched. `make retrain FORCE=1` overrides that deliberately. |
+| **Scoring never trains** | a missing or stale artifact raises instead of quietly training one, so a scheduled job cannot publish a map from a model nobody chose. |
 
 This exists for a concrete reason: a published map informs decisions about public
 spending. Months later, it must still be possible to answer *which* model
-produced the map a decision was based on. `make status` always reports the one in
-use.
+produced the map a decision was based on — and whether it was any good.
+`make status` always reports the one in use.
 
 ---
 
 ## Automatic updates
 
 ```bash
-make refresh    # ignitions + burned areas + dryness + export  (~3 min)
-make cron         # prints the crontab line for a weekly schedule
-make retreinar    # retrain the model (after each fire season)
+make refresh              # ignitions + burned areas + dryness + export  (~4 min)
+make cron                 # prints the crontab line for a weekly schedule
+make retrain              # retrain the model (after each fire season)
+make retrain FORCE=1      # ...promoting it even if the holdout AUC drops
 ```
 
 Every step tolerates failure: one source being down does not stop the others, and
 the application keeps serving the last good data.
 
+The refresh never retrains. Scoring loads the saved model and raises if it is
+missing, so a scheduled job can never quietly publish a map from a model nobody
+reviewed. Retraining is always a decision someone made.
+
 ---
 
 ## Deployment
 
-```bash
-make build     # production interface -> webapp/dist/
-make nginx     # prints the server configuration
-make cron      # prints the crontab line
+The pilot runs at **[firebreak.tiago-coutinho.com](https://firebreak.tiago-coutinho.com)**,
+on a Debian LXC container on a Proxmox host at home. Everything runs there: the
+weekly refresh, the satellite downloads and the model scoring. No laptop is
+involved, so the map keeps updating whether or not anyone is around.
+
+### How a request arrives
+
+```
+internet -> Cloudflare (TLS)
+              |  tunnel: an OUTBOUND connection, so no router port is open
+        cloudflared        (systemd service in the container)
+              |  http://localhost:80
+            nginx          (systemd service in the container)
+              |
+   webapp/dist/            the interface, rebuilt by `make build`
+   webapp/public/data/     the GeoJSON, rewritten by the weekly cron
 ```
 
-**Watch out for this one**, it is the easy mistake to make: `dist/` only receives
-the data at build time. If nginx serves data from inside `dist/`, the cron job
-will update the files and **the site will keep showing the old ones, silently**.
+There is no application server. The Python runs for about four minutes a week,
+writes GeoJSON, and exits; nginx serves the files it left behind. Nothing of
+ours is alive between runs.
 
-That is why `/data/` is served directly from `webapp/public/data/`, which is where
-the cron job writes. Data then updates without rebuilding the interface, and the
-interface rebuilds without touching the data.
+### The one mistake to avoid
 
-The server needs:
+`dist/` only receives a copy of the data **at build time**. If nginx serves
+`/data/` from inside `dist/`, the cron will update the real files and the site
+will keep showing the old ones, with no error anywhere.
 
-| | |
-|---|---|
-| `.env` | Copernicus credentials |
-| `uv` | on the cron `PATH` (the printed line sets it) |
-| `data/out` + part of `data/cache` | ~200 MB — the 14 GB of satellite bands are **not** required |
+So `/data/` is served straight from `webapp/public/data/`, where the cron
+writes. Data updates without rebuilding the interface, and the interface
+rebuilds without touching the data.
 
-The raw bands are only needed to rebuild historical composites; the cron job
-downloads whatever it needs for the current month.
+### What the server needs
+
+| | | |
+|---|---|---|
+| `.env` | Copernicus credentials, mode 600 | required for the weekly dryness step |
+| `uv` | installed in `/usr/local/bin` | the cron `PATH` is minimal and will not find `~/.local/bin` |
+| Node 20+ | for `vite build` | Debian 13 ships it; Debian 12 ships an end-of-life Node 18 |
+| `libgomp1` | OpenMP runtime | LightGBM needs it to train — this is what replaces `brew install libomp` on macOS |
+| `data/out` + `data/cache` | **229 MB**, copied once by rsync | not in git; the 14 GB of raw Sentinel bands are **not** required |
+
+The raw bands only rebuild historical composites. The cron downloads the current
+month by itself, which grows the cache by roughly 2-4 GB a year — worth pruning
+scenes older than three months.
+
+Reference container: 4 cores, 4 GB RAM, 32 GB disk. The RAM sizes the yearly
+`make retrain`, not the weekly refresh, which peaks far below it.
+
+### Provisioning a new one
+
+```bash
+apt install -y curl ca-certificates git rsync nginx libgomp1 nodejs npm
+curl -LsSf https://astral.sh/uv/install.sh | UV_INSTALL_DIR=/usr/local/bin sh
+
+git clone https://github.com/COU7INHO/wildfire-prevention.git /opt/firebreak
+cd /opt/firebreak && uv sync && (cd webapp && npm install)
+
+# seed what git does not carry, from a machine that has it
+# rsync -rltz --exclude='*.png' data/out/   <host>:/opt/firebreak/data/out/
+# rsync -rltz --exclude='sentinel/' data/cache/ <host>:/opt/firebreak/data/cache/
+
+make build      # interface -> webapp/dist/
+make nginx      # prints the server block; mind the /data/ alias above
+make cron       # prints the crontab line, with the PATH already resolved
+make status     # everything green before opening it up
+```
+
+`.geojson` is missing from nginx's `mime.types`, so it is served as
+`application/octet-stream` and skipped by gzip — the largest file on the site.
+The server block maps it explicitly, which cuts the map payload from 7.6 MB to
+1.5 MB.
 
 ---
 
 ## Known limitations
 
 - **One municipality only.** Baião is hardcoded in several places (Sentinel tile
-  `T29TNF`, DICO code `1302`, GHSL tile). `make dados MUN=X` does not yet work
+  `T29TNF`, DICO code `1302`, GHSL tile). `make data MUN=X` does not yet work
   for another municipality.
 - **Suppression bias.** The data shows where fire burned, not where firefighters
   stopped it. No wildfire model escapes this.
