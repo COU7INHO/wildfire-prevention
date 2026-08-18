@@ -266,12 +266,6 @@ footer {
 footer p { max-width: 68ch; margin: 0 auto 10px; }
 footer a { color: var(--accent); text-decoration: none; }
 footer a:hover { text-decoration: underline; }
-.github {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 9px 16px; border-radius: 8px;
-  border: 1px solid var(--border); color: var(--text) !important;
-}
-.github:hover { border-color: var(--accent); text-decoration: none !important; }
 
 @media (max-width: 760px) {
   .scan-scene { left: 0; opacity: 0.42; -webkit-mask-image: none; mask-image: none; }
