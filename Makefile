@@ -46,6 +46,7 @@ help:
 	@echo "    make dryness-animation     anima os meses: MP4 na landing, GIF no Desktop"
 	@echo "    make refresh    refresca ignições + fogos + dryness + exporta"
 	@echo "    make retrain    re-treina o model e exporta (após época de fogos)"
+	@echo "                      não promove se a AUC descer; FORCE=1 força"
 	@echo ""
 	@echo "  COLOCAR ONLINE"
 	@echo "    make build        build de produção da interface"
@@ -134,8 +135,9 @@ refresh:
 # re-treina e GUARDA o model, depois reavalia e exporta. O model guardado é
 # o que a atualização semanal usa — assim o mapa publicado tem sempre um
 # model identificável por trás, com data e parâmetros registados.
+# FORCE=1 promove mesmo que a AUC desça (a decisão fica registada por ti)
 retrain:
-	$(PY) -c "from wildfire_prevention.panel_model import train; train('$(MUN)')"
+	$(PY) -c "from wildfire_prevention.panel_model import train; train('$(MUN)', force=bool('$(FORCE)'))"
 	$(MAKE) model compare export
 
 app:

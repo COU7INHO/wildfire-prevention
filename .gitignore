@@ -19,8 +19,8 @@ data/cache/
 data/out/*
 # ...except the trained model, which is small and IS the published product.
 # Keeping it versioned means every map can be traced to an identifiable model.
-!data/out/modelo_*.txt
-!data/out/modelo_*.json
+!data/out/model_*.txt
+!data/out/model_*.json
 
 data/cron.log
 .DS_Store

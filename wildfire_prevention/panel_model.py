@@ -18,6 +18,9 @@ train/test slice cannot.
 
 from __future__ import annotations
 
+import json
+import shutil
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -156,19 +159,92 @@ def model_meta_path(name: str) -> Path:
     return OUT_DIR / f"model_{name.lower()}.json"
 
 
-def train(name: str = "Baião", drop=PROD_DROP) -> dict:
-    """Train the production model and SAVE it, with a record of how it was made.
+VERSIONS_DIR = OUT_DIR / "models"
+KEEP_VERSIONS = 5
+AUC_TOLERANCE = 0.01  # how far mean holdout AUC may fall before promotion stops
+
+
+def _holdout_metrics(X, y, year, keep) -> dict:
+    """Quality of this configuration, measured the honest way: fit on target
+    years <= TRAIN_UNTIL, score the later years the model never saw.
+
+    Recorded next to the artefact because "did the new model get worse?" is
+    otherwise unanswerable -- a saved model carrying no metric cannot be
+    compared with the one it replaced."""
+    tr = year <= TRAIN_UNTIL
+    test_years = sorted(int(t) for t in np.unique(year[year > TRAIN_UNTIL]))
+    if not test_years or not tr.any():
+        return {}
+
+    Xk = X[:, keep]
+    clf = LGBMClassifier(**PARAMS)
+    clf.fit(Xk[tr], y[tr])
+
+    auc, ap = {}, {}
+    for ty in test_years:
+        m = year == ty
+        pr = clf.predict_proba(Xk[m])[:, 1]
+        auc[str(ty)] = float(roc_auc_score(y[m], pr))
+        ap[str(ty)] = float(average_precision_score(y[m], pr))
+    return {
+        "treino_ate": int(TRAIN_UNTIL),
+        "anos_teste": test_years,
+        "auc_por_ano": auc,
+        "auc_medio": float(np.mean(list(auc.values()))),
+        "ap_medio": float(np.mean(list(ap.values()))),
+    }
+
+
+def _archive_current(name: str) -> Path | None:
+    """Copy the model in production into models/, stamped with the date it was
+    trained, before anything overwrites it. Rollback is then a file copy."""
+    cur, cur_meta = model_path(name), model_meta_path(name)
+    if not (cur.exists() and cur_meta.exists()):
+        return None
+    stamp = json.loads(cur_meta.read_text()).get("treinado_em", "sem-data")
+    stamp = stamp.replace("-", "").replace(":", "").replace("T", "_")
+    VERSIONS_DIR.mkdir(parents=True, exist_ok=True)
+    dst = VERSIONS_DIR / f"model_{name.lower()}_{stamp}.txt"
+    shutil.copy2(cur, dst)
+    shutil.copy2(cur_meta, dst.with_suffix(".json"))
+    kept = sorted(VERSIONS_DIR.glob(f"model_{name.lower()}_*.txt"))
+    for old in kept[:-KEEP_VERSIONS]:          # the stamp sorts chronologically
+        old.unlink(missing_ok=True)
+        old.with_suffix(".json").unlink(missing_ok=True)
+    return dst
+
+
+def train(name: str = "Baião", drop=PROD_DROP, force: bool = False) -> dict:
+    """Train the production model and SAVE it, with a record of how it was made
+    and how well it scored.
 
     A published map is a basis for spending public money, so it must be possible
     to answer later: which model produced the map we acted on, trained when, on
-    what data? Without a saved artefact that question has no answer — the model
-    would have been retrained since."""
-    import json
-    from datetime import datetime
-
+    what data -- and was it any good? So the previous model is archived instead
+    of overwritten, and a candidate that scores materially worse is NOT
+    promoted. force=True overrides that judgement deliberately."""
     X, y, year, names = build_panel(name)
     keep = [i for i, nm in enumerate(names) if nm not in drop]
     feats = [names[i] for i in keep]
+
+    metrics = _holdout_metrics(X, y, year, keep)
+    previous = {}
+    if model_meta_path(name).exists():
+        previous = json.loads(model_meta_path(name).read_text()).get("metricas", {})
+
+    if metrics and previous and not force:
+        fall = previous["auc_medio"] - metrics["auc_medio"]
+        if fall > AUC_TOLERANCE:
+            print(
+                f"MODELO NAO PROMOVIDO: AUC media {metrics['auc_medio']:.3f} contra "
+                f"{previous['auc_medio']:.3f} do modelo actual "
+                f"(queda {fall:.3f}, tolerancia {AUC_TOLERANCE:.3f}).\n"
+                f"O modelo em producao ficou intacto. "
+                f"Para substituir mesmo assim: make retrain FORCE=1"
+            )
+            return {"promovido": False, "metricas": metrics, "anteriores": previous}
+
+    _archive_current(name)
 
     clf = LGBMClassifier(**PARAMS)
     clf.fit(X[:, keep], y)
@@ -182,40 +258,57 @@ def train(name: str = "Baião", drop=PROD_DROP) -> dict:
         "n_celulas": int((year == year[0]).sum()),
         "features": feats,
         "parametros": {k: v for k, v in PARAMS.items() if k != "verbosity"},
+        "metricas": metrics,
+        "promovido": True,
     }
     model_meta_path(name).write_text(json.dumps(meta, indent=2, ensure_ascii=False))
+    score = f", AUC media {metrics['auc_medio']:.3f}" if metrics else ""
     print(f"modelo guardado: {model_path(name).name} "
-          f"({meta['n_linhas']:,} linhas, anos {meta['anos_alvo'][0]}-{meta['anos_alvo'][1]})")
+          f"({meta['n_linhas']:,} linhas, anos {meta['anos_alvo'][0]}-{meta['anos_alvo'][1]}{score})")
     return meta
 
 
 def structural_susceptibility(name: str = "Baião", drop=PROD_DROP,
-                              retrain: bool = False) -> np.ndarray:
+                              allow_train: bool = False) -> np.ndarray:
     """STRUCTURAL fire propensity for the prevention map = each cell's MEAN annual
     burn probability across all panel years. Averaging over years cancels the
     single-year fuel-depletion effect (just-burned = low that year, recovered =
     high later), leaving the long-run 'how fire-prone is this place' signal that
     aligns with historical burn frequency.
 
-    Uses the saved model when it matches the current features; trains and saves
-    one otherwise. So the weekly refresh scores with a known, auditable model
-    instead of quietly producing a new one."""
-    import json
-
+    Scores with the SAVED model and refuses to invent one. Training is a
+    decision, never a side effect of the weekly refresh: a cron that quietly
+    trains would publish a map nobody chose, from a model nobody reviewed.
+    Pass allow_train=True only where training on the spot is what you mean."""
     import lightgbm as lgb
 
-    X, y, year, names = build_panel(name)
-    keep = [i for i, nm in enumerate(names) if nm not in drop]
-    feats = [names[i] for i in keep]
+    # the artefact is checked BEFORE the panel is built: a cron that is going to
+    # fail should fail in a second, not after half a minute of loading npz
+    feats = [nm for nm in FEAT_NAMES if nm not in drop]
 
     booster = None
-    if not retrain and model_path(name).exists() and model_meta_path(name).exists():
+    if model_path(name).exists() and model_meta_path(name).exists():
         meta = json.loads(model_meta_path(name).read_text())
         if meta.get("features") == feats:          # stale if the inputs changed
             booster = lgb.Booster(model_file=str(model_path(name)))
+        elif not allow_train:
+            raise RuntimeError(
+                f"O modelo guardado foi treinado com outras variaveis "
+                f"({len(meta.get('features', []))} contra {len(feats)} actuais), "
+                f"por isso nao serve para pontuar. Correr: make retrain"
+            )
+    elif not allow_train:
+        raise FileNotFoundError(
+            f"Nao ha modelo guardado em {model_path(name)}. O mapa nao pode ser "
+            f"exportado sem ele -- treinar nao e automatico, por decisao. "
+            f"Correr: make retrain"
+        )
+
+    X, y, year, names = build_panel(name)
+    keep = [i for i, nm in enumerate(names) if nm not in drop]
 
     if booster is None:
-        train(name, drop=drop)
+        train(name, drop=drop, force=True)     # bootstrap: nothing to compare to
         booster = lgb.Booster(model_file=str(model_path(name)))
 
     p = booster.predict(X[:, keep])

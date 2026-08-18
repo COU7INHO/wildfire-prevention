@@ -1,6 +1,6 @@
 {
   "municipio": "Baião",
-  "treinado_em": "2026-08-11T13:01:46",
+  "treinado_em": "2026-08-18T12:09:42",
   "anos_alvo": [
     2016,
     2025
@@ -31,5 +31,21 @@
     "colsample_bytree": 0.6,
     "subsample": 0.8,
     "random_state": 42
-  }
+  },
+  "metricas": {
+    "treino_ate": 2022,
+    "anos_teste": [
+      2023,
+      2024,
+      2025
+    ],
+    "auc_por_ano": {
+      "2023": 0.8810436492395134,
+      "2024": 0.7619211805787638,
+      "2025": 0.77689601792992
+    },
+    "auc_medio": 0.8066202825827324,
+    "ap_medio": 0.28089334405670435
+  },
+  "promovido": true
 }
