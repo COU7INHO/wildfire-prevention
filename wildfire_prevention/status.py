@@ -50,15 +50,15 @@ def main(name: str = "Baião") -> None:
         print(f"    anos {m['anos_alvo'][0]}-{m['anos_alvo'][1]} · "
               f"{m['n_linhas']:,} linhas · {len(m['features'])} variáveis")
     else:
-        print("  ✗ sem modelo guardado — será treinado na próxima exportação")
+        print("  ✗ sem modelo guardado — a exportação vai falhar. Correr: make retrain")
 
     print("\nDADOS QUE A APLICAÇÃO LÊ")
     for label, p in [
         ("prioridade e risco", WEB / f"{web}_priority.geojson"),
-        ("ignições do ano (Proteção Civil)", WEB / f"{web}_ocorrencias.geojson"),
-        ("áreas ardidas por ano (ICNF)", WEB / f"{web}_fogos.geojson"),
-        ("casas / estradas / água", WEB / f"{web}_casas.geojson"),
-        ("comparação com o plano oficial", WEB / f"{web}_comparacao.json"),
+        ("ignições do ano (Proteção Civil)", WEB / f"{web}_ignitions.geojson"),
+        ("áreas ardidas por ano (ICNF)", WEB / f"{web}_fires.geojson"),
+        ("casas / estradas / água", WEB / f"{web}_buildings.geojson"),
+        ("comparação com o plano oficial", WEB / f"{web}_comparison.json"),
     ]:
         print(f"  {'✓' if p.exists() else '✗'} {label:<44} {_age(p)}")
 
@@ -72,13 +72,13 @@ def main(name: str = "Baião") -> None:
         serie = props.get("seca_series") or []
         if serie:
             print(f"  meses de secura mostrados                    {', '.join(s['mes'] for s in serie)}")
-    occ = WEB / f"{web}_ocorrencias.geojson"
+    occ = WEB / f"{web}_ignitions.geojson"
     if occ.exists():
         d = json.loads(occ.read_text())
         p = d.get("properties", {})
         print(f"  ignições: {len(d.get('features', []))} de {p.get('year','?')}, "
               f"obtidas em {p.get('fetched','?')}")
-    fog = WEB / f"{web}_fogos.geojson"
+    fog = WEB / f"{web}_fires.geojson"
     if fog.exists():
         years = {f["properties"]["ano"] for f in json.loads(fog.read_text())["features"]}
         print(f"  áreas ardidas: {min(years)}-{max(years)}")
